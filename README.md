@@ -12,6 +12,38 @@
 退货率与物流费率是估算占位值（已标注）；`data/` 根目录的商品与演示竞品数据是训练用虚构数据。
 **任何情况下都不代表真实店铺业绩、真实 GMV 或真实投放结果。**
 
+## 在线演示与完整功能的区别
+
+**在线只读版**：https://fuzzylogic112.github.io/crossborder-ops-copilot/
+
+| 功能 | 在线版 | 本机运行 |
+|---|---|---|
+| 定价计算器（交互式，实时重算） | ✅ | ✅ |
+| 选品评分与硬性淘汰可视化 | ✅ | ✅ |
+| Listing 三层 Prompt 生成（复制后粘到自己的 AI 工具） | ✅ | ✅ |
+| 浏览器本地存储 / 自建数据库推送 | ✅ | ✅ |
+| **抓取真实竞品数据** | ❌ | ✅ |
+| **每日工作流、快照入库、跨快照对比** | ❌ | ✅ |
+| CLI / MCP Server | ❌ | ✅ |
+
+### 为什么在线版不能抓取，也连不上你本机的服务
+
+两道浏览器安全墙，都绕不过：
+
+1. **同源策略（CORS）**：网页 JS 不能直接请求 amazon.com 这类站点，平台不会给你的页面发跨域许可。
+2. **本地网络访问限制**：在线版是 HTTPS 页面，浏览器会拦掉它对 `http://127.0.0.1` 的请求
+   （Private Network Access 限制，实测报 `ERR_BLOCKED_BY_CLIENT`）。
+
+**所以：在线版永远连不上你本机的 `serve.py`，刷新也没用。**
+要跑完整链路，clone 下来在本机运行，然后访问本地服务自己打开的地址：
+
+```bash
+git clone https://github.com/FuzzyLogic112/crossborder-ops-copilot
+cd crossborder-ops-copilot
+pip install pandas openpyxl pytest pyyaml
+python serve.py --open        # 自动打开 http://127.0.0.1:8911
+```
+
 ## 安装
 
 ```bash

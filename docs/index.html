@@ -106,6 +106,7 @@
   <h1>跨境电商运营副驾驶</h1>
   <p class="sub">选品评分 · 贡献利润测算 · 竞品变化监控 —— 同一套逻辑，命令行 / AI / 网页三个入口</p>
   <div class="badges" id="badges"></div>
+  <div id="topmode"></div>
 </header>
 
 <nav id="nav">
@@ -751,9 +752,15 @@ $("nav").addEventListener("click", e=>{
 /* ═══════════ 本地服务探测 ═══════════ */
 let LOCAL = null;   // null = 未连接；否则是 {base, health}
 
+function isRemote(){
+  // 线上版（https + 非本机域名）无法连本地服务，别做无谓尝试
+  return location.protocol === "https:" &&
+         !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+}
+
 async function probeLocal(){
-  // 面板可能由本地服务自己伺服（同源），也可能从别的端口/Pages 打开
-  const bases = [location.origin, "http://127.0.0.1:8911", "http://127.0.0.1:8912"];
+  // 同源优先（面板由本地服务自己伺服时）；线上版不尝试跨到 127.0.0.1，那会被浏览器拦掉
+  const bases = isRemote() ? [] : [location.origin, "http://127.0.0.1:8911", "http://127.0.0.1:8912"];
   for (const b of bases){
     try{
       const ctl = new AbortController();
@@ -781,20 +788,36 @@ async function api(path, body){
 /* ═══════════ 能力矩阵 ═══════════ */
 function renderModeBanner(){
   const on = !!LOCAL;
+  $("topmode").innerHTML = on
+    ? `<div class="cap ok" style="margin:10px 0 0"><strong>完整模式</strong> —— 本地服务已连接，抓取 / 工作流 / 快照入库全部可用。</div>`
+    : `<div class="cap" style="margin:10px 0 0"><strong>只读演示模式</strong> ——
+        定价计算器、选品评分、文案 Prompt 生成、浏览器存储都能正常用；
+        抓取与工作流需要在本机跑 <code>python serve.py</code>
+        并访问它打开的地址（<a href="https://github.com/FuzzyLogic112/crossborder-ops-copilot#readme" target="_blank" rel="noopener">说明</a>）。</div>`;
   const scrape = on && LOCAL.health.capabilities.scrape;
 
   $("listingmode").className = "cap ok";
   $("listingmode").innerHTML = on
     ? "<strong>本地服务已连接</strong> —— Prompt 由服务端按 <code>skills/listing/</code> 的真实模板拼装。"
-    : "<strong>只读模式</strong> —— 未检测到本地服务，Prompt 用页面内置的模板骨架拼装，内容一致但不含模板全文。";
+    : "<strong>只读模式</strong> —— Prompt 用页面内置的模板骨架拼装，内容一致但不含模板全文。"
+      + "<strong>这一页在线上版也完全可用</strong>：生成的 Prompt 复制走，粘到你自己的 AI 工具里就能跑。";
 
   $("opsmode").innerHTML = on
     ? `<div class="cap ok"><strong>本地服务已连接</strong>（${esc(LOCAL.base)}）。`
       + (scrape ? "抓取能力可用。" : "<strong>但找不到 amzrank.py</strong>，抓取不可用 —— 把抓取脚本放到 <code>../amzrank-stage/scraper/</code> 下。")
       + "</div>"
-    : `<div class="cap"><strong>抓取需要本地服务。</strong>
-        浏览器同源策略（CORS）不允许网页直接抓取电商平台页面 —— 这是浏览器安全底层设计，绕不过。
-        在项目目录运行 <code>python serve.py --open</code> 后刷新本页即可解锁。</div>`;
+    : (isRemote()
+      ? `<div class="cap"><strong>这是线上只读演示版，抓取等写操作在这里不可用。</strong><br>
+        两道浏览器安全墙挡着：① 同源策略不允许网页直接抓取电商平台页面；
+        ② 本页是 HTTPS，浏览器会拦掉它对 <code>http://127.0.0.1</code> 的请求
+        （Private Network Access 限制，实测报 <code>ERR_BLOCKED_BY_CLIENT</code>）。
+        <br><br><strong>要跑完整链路，请 clone 仓库后在本机运行：</strong><br>
+        <code>python serve.py --open</code><br>
+        然后访问它打开的 <code>http://127.0.0.1:8911</code> —— <strong>不是刷新本页</strong>，
+        本页永远连不上你的本地服务。</div>`
+      : `<div class="cap"><strong>抓取需要本地服务。</strong>
+        浏览器同源策略不允许网页直接抓取电商平台页面 —— 这是浏览器安全底层设计，绕不过。
+        在项目目录运行 <code>python serve.py --open</code>，用它打开的地址访问面板即可解锁。</div>`);
 
   const dis = !on;
   ["sc_run","mo_run","wf_run"].forEach(id=>{ if($(id)) $(id).disabled = dis; });
