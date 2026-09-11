@@ -1,0 +1,10 @@
+# 各目的市场头程物流费率（示例估算，需用真实货代报价替换）
+US:
+  base_fee: 15
+  rate_per_kg: 20
+EU:
+  base_fee: 18
+  rate_per_kg: 24
+SEA:
+  base_fee: 8
+  rate_per_kg: 12

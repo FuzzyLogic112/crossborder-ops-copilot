@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.pytest-tmp/
+
+# 运行时生成物
+data/history.db
+reports/*.xlsx
+reports/*.md
+!reports/.gitkeep
+
+# ── 以下是「不能公开」的内容，公开仓库里必须排除 ──
+
+# 抓取到的真实平台数据。自己本地分析可以，但转发/再分发第三方平台数据
+# 有 ToS 与合规风险，不进公开仓库。使用者应自己抓自己的数据。
+data/real/
+data/inbox/*.xlsx
+data/inbox/*.xls
+
+# 求职面试准备文档（仅本人本地使用，内容含面试话术，不适合公开）
+操作指南.md
+项目深度理解.md
+数据来源说明.md
+文件导览.md
+
+# 本机环境
+.env
+.vscode/
+.idea/
+
+# 面板：含真实抓取数据的本地版，不进公开仓库
+docs/data.local.json

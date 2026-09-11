@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>跨境电商运营副驾驶 · 可视化面板</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#fff; --ink:#1a1d21; --sub:#5d646d; --line:#e3e6ea;
+    --accent:#1e7a4c; --accent-soft:#e8f4ee;
+    --warn:#b4551f; --warn-soft:#fdf3ec;
+    --bad:#a82a2a; --bad-soft:#fbeeee;
+    --radius:10px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#14171a; --card:#1c2025; --ink:#e8eaed; --sub:#98a0a9; --line:#2c3238;
+      --accent:#4caf80; --accent-soft:#1b2f26;
+      --warn:#d98a52; --warn-soft:#2e241c;
+      --bad:#e06767; --bad-soft:#2e1d1d;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 16px 60px}
+  h1{font-size:24px;margin:0 0 6px}
+  h2{font-size:18px;margin:0 0 4px}
+  .sub{color:var(--sub);font-size:13.5px;margin:0}
+  header{border-bottom:2px solid var(--accent);padding-bottom:14px;margin-bottom:16px}
+
+  .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .badge{font-size:11.5px;padding:3px 9px;border-radius:20px;border:1px solid var(--line);
+    background:var(--card);color:var(--sub)}
+  .badge.g{background:var(--accent-soft);color:var(--accent);border-color:transparent;font-weight:600}
+  .badge.y{background:var(--warn-soft);color:var(--warn);border-color:transparent;font-weight:600}
+  .badge.r{background:var(--bad-soft);color:var(--bad);border-color:transparent;font-weight:600}
+
+  nav{display:flex;gap:4px;flex-wrap:wrap;margin:18px 0 14px;
+    border-bottom:1px solid var(--line)}
+  nav button{background:none;border:0;border-bottom:2px solid transparent;
+    padding:9px 14px;font-size:14.5px;color:var(--sub);cursor:pointer;font-family:inherit}
+  nav button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 18px;margin-bottom:14px}
+  .note{font-size:13px;color:var(--sub);margin:6px 0 0}
+  .cap{font-size:12.5px;color:var(--sub);background:var(--warn-soft);border-left:3px solid var(--warn);
+    padding:9px 12px;border-radius:0 6px 6px 0;margin:12px 0}
+  .cap.ok{background:var(--accent-soft);border-left-color:var(--accent)}
+
+  .grid{display:grid;gap:14px}
+  @media(min-width:760px){ .grid.two{grid-template-columns:330px 1fr} }
+
+  label{display:block;font-size:12.5px;color:var(--sub);margin:11px 0 3px}
+  input,select{width:100%;padding:8px 10px;font-size:14.5px;font-family:inherit;
+    border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink)}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .kpi{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 13px}
+  .kpi .k{font-size:11.5px;color:var(--sub);letter-spacing:.02em}
+  .kpi .v{font-size:22px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
+  .kpi.hero .v{color:var(--accent)}
+  .kpi.neg .v{color:var(--bad)}
+
+  .bar{display:flex;height:26px;border-radius:6px;overflow:hidden;margin:14px 0 8px;
+    border:1px solid var(--line)}
+  .bar i{display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--sub)}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+  th,td{text-align:left;padding:8px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{font-size:12px;color:var(--sub);font-weight:600;background:var(--bg);
+    position:sticky;top:0}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr.out{opacity:.72}
+  tr.out td:first-child{border-left:3px solid var(--bad)}
+  .why{font-size:12px;color:var(--bad);white-space:normal;max-width:340px}
+  .mini{display:inline-block;height:7px;border-radius:4px;background:var(--accent);vertical-align:middle}
+  .tag{font-size:11px;padding:2px 7px;border-radius:5px;font-weight:600;white-space:nowrap}
+  .tag.drop{background:var(--bad-soft);color:var(--bad)}
+  .tag.rise{background:var(--warn-soft);color:var(--warn)}
+  .tag.new{background:var(--accent-soft);color:var(--accent)}
+  .tag.other{background:var(--bg);color:var(--sub);border:1px solid var(--line)}
+  .ttl{white-space:normal;max-width:420px;font-size:13px}
+  a{color:var(--accent)}
+  footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12.5px;color:var(--sub)}
+  .btn{padding:8px 15px;font-size:14px;font-family:inherit;font-weight:600;cursor:pointer;
+    border-radius:7px;border:1px solid var(--accent);background:var(--accent);color:#fff}
+  .btn.ghost{background:transparent;color:var(--accent)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .hide{display:none}
+  code{background:var(--bg);padding:1px 5px;border-radius:4px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>跨境电商运营副驾驶</h1>
+  <p class="sub">选品评分 · 贡献利润测算 · 竞品变化监控 —— 同一套逻辑，命令行 / AI / 网页三个入口</p>
+  <div class="badges" id="badges"></div>
+</header>
+
+<nav id="nav">
+  <button data-tab="calc" aria-selected="true">定价计算器</button>
+  <button data-tab="score" aria-selected="false">选品评分</button>
+  <button data-tab="comp" aria-selected="false">竞品数据</button>
+  <button data-tab="listing" aria-selected="false">文案生成</button>
+  <button data-tab="ops" aria-selected="false">抓取与工作流</button>
+  <button data-tab="store" aria-selected="false">数据存储</button>
+  <button data-tab="about" aria-selected="false">说明</button>
+</nav>
+
+<!-- ── 定价计算器 ── -->
+<section id="tab-calc">
+  <div class="grid two">
+    <div class="card">
+      <h2>输入</h2>
+      <p class="note">改任意一项，右侧实时重算。</p>
+
+      <label for="preset">载入示例商品</label>
+      <select id="preset"></select>
+
+      <div class="row2">
+        <div><label for="cost">采购价（元）</label><input id="cost" type="number" step="0.01" value="18"></div>
+        <div><label for="pack">包装成本（元）</label><input id="pack" type="number" step="0.01" value="2"></div>
+      </div>
+      <div class="row2">
+        <div><label for="wt">计费重量（kg）</label><input id="wt" type="number" step="0.01" value="0.4"></div>
+        <div><label for="cat">类目（影响退货率）</label><select id="cat"></select></div>
+      </div>
+      <div class="row2">
+        <div><label for="plat">平台</label><select id="plat"></select></div>
+        <div><label for="mkt">目标市场</label><select id="mkt"></select></div>
+      </div>
+      <div class="row2">
+        <div><label for="scen">毛利场景</label><select id="scen">
+          <option value="conservative">保守 20%</option>
+          <option value="standard" selected>标准 30%</option>
+          <option value="aggressive">激进 40%</option>
+        </select></div>
+        <div><label for="price">实际售价（元，留空=按场景反推）</label>
+          <input id="price" type="number" step="0.01" placeholder="留空自动算"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>结果</h2>
+      <div class="kpis" id="kpis"></div>
+      <div class="bar" id="bar"></div>
+      <div class="legend" id="legend"></div>
+      <div id="calcnote"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>为什么保本价是「除以 (1 − 费率)」</h2>
+    <p class="note">
+      因为佣金和支付手续费按 <strong>售价</strong> 百分比收取，不是按成本收取。
+      固定成本 43 元、费率合计 12% 时，正确算法是 43 ÷ 0.88 = 48.86，
+      而不是 43 × 1.12 = 48.16。<strong>后者每单会少算几块钱，而且错得不明显。</strong>
+    </p>
+    <p class="note" style="margin-top:8px">
+      广告 Broke-even ROAS = 1 ÷ 贡献利润率。利润率 20% 意味着广告每花 1 元
+      至少要带回 5 元销售额才不亏 —— 同一个 ROAS 在不同利润率的品上，可能一个赚一个亏。
+    </p>
+  </div>
+</section>
+
+<!-- ── 选品评分 ── -->
+<section id="tab-score" class="hide">
+  <div class="card">
+    <h2>六维度评分与硬性淘汰</h2>
+    <p class="note">
+      需求稳定性 25 ＋ 竞争缺口 20 ＋ 贡献利润 20 ＋ 物流履约 15 ＋ 合规风险 10 ＋ 内容展示 10 ＝ 100。
+      <label for="sscen" style="display:inline;margin:0 0 0 6px">场景</label>
+      <select id="sscen" style="width:auto;display:inline-block;padding:3px 8px;font-size:13px">
+        <option value="conservative">保守 20%</option>
+        <option value="standard" selected>标准 30%</option>
+        <option value="aggressive">激进 40%</option>
+      </select>
+    </p>
+    <div class="cap">
+      <strong>硬性淘汰优先于总分：</strong>出现禁限售 / 功效宣称风险，或贡献利润 ≤ 0，
+      <strong>直接出局，不等总分算完</strong>。看「美白牙贴」那行 —— 需求分和缺口分都是全场最高，
+      总分仍然是 0。合规不是扣点分，是一票否决。
+    </div>
+    <div class="tblwrap"><table id="stbl"></table></div>
+    <p class="note" id="elimsum"></p>
+  </div>
+
+  <div class="card">
+    <h2>六项里只有一项是系统算的</h2>
+    <p class="note">
+      <strong>贡献利润</strong>由系统按真实平台费率计算，是唯一客观项。
+      另外四项（需求稳定性、竞争缺口、物流履约、内容展示）<strong>需要运营自己判断打分</strong>。
+      这个工具的定位是<strong>把打分标准固定下来 ＋ 算准利润 ＋ 自动执行红线</strong>，
+      不是替人做判断 —— 它是纪律工具，不是决策替代品。
+    </p>
+  </div>
+</section>
+
+<!-- ── 竞品数据 ── -->
+<section id="tab-comp" class="hide">
+  <div class="card">
+    <h2>竞品变化日报</h2>
+    <p class="note">识别降价 / 涨价 / 新品上榜 / 下架 / 促销变化 / 评分变化，每类配一条处理建议。</p>
+    <div id="warnbox"></div>
+    <div id="changes"></div>
+    <div class="cap">
+      <strong>日报不是把价格列一遍。</strong>它要回答四个问题：谁变了、变了什么、可能原因是什么、
+      建议观察还是立即处理。降价的默认建议是「先核算己方贡献利润再决定是否跟价」——
+      <strong>不是直接跟价，因为跟价可能把自己打到亏损线以下。</strong>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>竞品快照 <span id="compsrc" class="badge"></span></h2>
+    <p class="note" id="compnote"></p>
+    <div class="tblwrap"><table id="ctbl"></table></div>
+  </div>
+</section>
+
+<!-- ── 文案生成 ── -->
+<section id="tab-listing" class="hide">
+  <div class="card">
+    <h2>Listing 文案生成 · 三层 Prompt 架构</h2>
+    <p class="note">
+      决策层出「内容策略卡」→ 执行层按平台出文案 → 质检层扫合规风险。
+      架构复用自开源项目 <strong>xhs-content-workflow</strong>，从小红书内容场景迁移而来。
+    </p>
+    <div class="cap ok" id="listingmode"></div>
+
+    <div class="grid two">
+      <div>
+        <label for="lp_name">产品名称</label>
+        <input id="lp_name" value="宠物伸缩牵引绳">
+        <label for="lp_cat">类目</label>
+        <input id="lp_cat" value="pet_supplies">
+        <label for="lp_feat">核心卖点（一行一条，不要凭空新增）</label>
+        <textarea id="lp_feat" rows="4" style="width:100%;padding:8px 10px;font-size:14px;
+          font-family:inherit;border:1px solid var(--line);border-radius:7px;
+          background:var(--bg);color:var(--ink)">防勾线设计
+5米伸缩范围
+安全材质</textarea>
+        <div class="row2">
+          <div><label for="lp_mkt">目标市场</label>
+            <select id="lp_mkt"><option>US</option><option>EU</option><option>SEA</option></select></div>
+          <div><label for="lp_tone">语气基调</label><input id="lp_tone" value="专业耐用"></div>
+        </div>
+        <label for="lp_layer">生成哪一层</label>
+        <select id="lp_layer">
+          <option value="planning">① 决策层 · 内容策略卡</option>
+          <option value="amazon">② 执行层 · Amazon（标题+五点+关键词）</option>
+          <option value="shopify">② 执行层 · 独立站（长文案+SEO）</option>
+          <option value="tiktok">② 执行层 · TikTok Shop（短标题+口播稿）</option>
+          <option value="qa">③ 质检层 · 合规风险扫描</option>
+        </select>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button id="lp_gen" class="btn">生成 Prompt</button>
+          <button id="lp_copy" class="btn ghost">复制到剪贴板</button>
+        </div>
+        <p class="note" id="lp_status"></p>
+      </div>
+      <div>
+        <label for="lp_out">生成的 Prompt（粘到你自己的 AI 对话框里运行）</label>
+        <textarea id="lp_out" rows="18" readonly style="width:100%;padding:10px;
+          font:12.5px/1.55 ui-monospace,Consolas,monospace;border:1px solid var(--line);
+          border-radius:7px;background:var(--bg);color:var(--ink)"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>为什么不直接在页面里调 AI</h2>
+    <p class="note">
+      在网页里调 LLM 需要把 API Key 放进浏览器 —— <strong>密钥会暴露在前端，且你的产品数据会发给第三方</strong>。
+      本面板刻意只生成 Prompt、不碰任何 API Key，你把 Prompt 粘到自己的 AI 工具里跑，
+      数据流向完全由你控制。
+    </p>
+    <p class="note" style="margin-top:8px">
+      想要全自动，正确做法是把这套 Prompt 装成 Claude Code Skill
+      （<code>cp -r skills/listing ~/.claude/skills/</code>），
+      或通过 MCP 由 AI 助手编排 —— 两者都在你自己机器上运行。
+    </p>
+  </div>
+</section>
+
+<!-- ── 抓取与工作流 ── -->
+<section id="tab-ops" class="hide">
+  <div class="card">
+    <h2>抓取真实竞品数据</h2>
+    <div id="opsmode"></div>
+
+    <div class="grid two">
+      <div>
+        <label for="sc_site">站点</label>
+        <select id="sc_site"></select>
+        <label for="sc_cat">类目 slug</label>
+        <input id="sc_cat" list="catlist" value="pet-supplies">
+        <datalist id="catlist"></datalist>
+        <p class="note" id="sc_hint"></p>
+        <div class="row2">
+          <div><label for="sc_pages">页数（上限 3）</label>
+            <input id="sc_pages" type="number" min="1" max="3" value="1"></div>
+          <div><label for="sc_delay">间隔秒数（下限 3）</label>
+            <input id="sc_delay" type="number" min="3" step="0.5" value="3"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button id="sc_run" class="btn">开始抓取</button>
+          <button id="sc_refresh" class="btn ghost">刷新快照列表</button>
+        </div>
+        <p class="note" id="sc_status"></p>
+      </div>
+      <div>
+        <label>任务日志</label>
+        <pre id="sc_log" style="margin:0;padding:10px;height:270px;overflow:auto;
+          background:var(--bg);border:1px solid var(--line);border-radius:7px;
+          font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap"></pre>
+      </div>
+    </div>
+
+    <div class="cap">
+      <strong>抓取的硬性约束（写在服务端，前端改不了）：</strong>
+      站点白名单 · 类目 slug 只允许小写字母数字连字符 · 单次最多 3 页 ·
+      <strong>间隔强制 ≥3 秒</strong> · 只抓公开 Best Sellers 榜单页。
+      服务只绑定 127.0.0.1，且<strong>不提供改价 / 上架 / 投放 / 发消息任何接口</strong>。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>快照与变化对比</h2>
+    <div class="row2">
+      <div><label for="mo_a">基准快照</label><select id="mo_a"></select></div>
+      <div><label for="mo_b">对比快照</label><select id="mo_b"></select></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button id="mo_run" class="btn">对比</button>
+      <button id="mo_save" class="btn ghost">把结果存到浏览器</button>
+    </div>
+    <p class="note" id="mo_status"></p>
+    <div id="mo_out"></div>
+    <p class="note">
+      ⚠️ 两份快照必须<strong>同类目、同页数</strong>。范围不同时多出来的商品会被误判成「新品上榜」——
+      系统会自动只在共同区间内比对并在顶部警告，但那部分数据等于白抓了。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>每日工作流</h2>
+    <p class="note">一次跑完「导入 → 比对 → 评分摘要 → 落盘报告」。</p>
+    <div class="row2">
+      <div><label for="wf_input">输入快照</label><select id="wf_input"></select></div>
+      <div><label for="wf_prev">对比的上一个快照日期</label><input id="wf_prev" placeholder="2026-09-10"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="wf_run" class="btn">运行工作流</button>
+    </div>
+    <p class="note" id="wf_status"></p>
+    <pre id="wf_out" style="margin:8px 0 0;padding:10px;max-height:240px;overflow:auto;
+      background:var(--bg);border:1px solid var(--line);border-radius:7px;
+      font:12px/1.55 ui-monospace,Consolas,monospace;white-space:pre-wrap"></pre>
+  </div>
+</section>
+
+<!-- ── 数据存储 ── -->
+<section id="tab-store" class="hide">
+  <div class="card">
+    <h2>数据存在哪里</h2>
+    <p class="note">
+      本面板<strong>不会把你的数据上传到任何服务器</strong>。三种存储方式，你自己选：
+    </p>
+    <table style="min-width:0">
+      <tr><td><strong>浏览器本地</strong><br><span class="badge g">默认可用</span></td>
+          <td class="ttl">存在浏览器 <code>localStorage</code> 里，只在这台机器这个浏览器中。
+          清缓存会丢，不同设备不同步，Claude 和任何人都读不到。适合临时对比结果。</td></tr>
+      <tr><td><strong>本机文件</strong><br><span class="badge" id="badge_local">需本地服务</span></td>
+          <td class="ttl">抓取结果写成 <code>data/real/*.csv</code> 与本地 SQLite
+          （<code>data/history.db</code>），完全在你机器上。这是主力方式。</td></tr>
+      <tr><td><strong>自建数据库</strong><br><span class="badge y">需自行接入</span></td>
+          <td class="ttl">见下方说明。要用支持浏览器直连的数据库（如 Supabase），
+          或让本地服务代写。<strong>凭据只存在你本地，不进仓库。</strong></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>浏览器本地存储</h2>
+    <p class="note" id="ls_status"></p>
+    <div id="ls_list"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button id="ls_export" class="btn ghost">导出全部为 JSON</button>
+      <button id="ls_clear" class="btn ghost">清空浏览器存储</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>接入自建数据库</h2>
+    <p class="note">
+      浏览器只能直连<strong>显式开放了 CORS 的数据库服务</strong>（Supabase、PocketBase 这类）。
+      MySQL / PostgreSQL 这类原生协议数据库<strong>浏览器连不上</strong>，必须由本地服务代写。
+    </p>
+    <label for="db_url">数据库 REST 端点（例：https://xxx.supabase.co/rest/v1/competitor_snapshots）</label>
+    <input id="db_url" placeholder="留空则不启用">
+    <label for="db_key">API Key / anon key</label>
+    <input id="db_key" type="password" placeholder="只保存在你的浏览器 localStorage">
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button id="db_save" class="btn ghost">保存配置</button>
+      <button id="db_test" class="btn ghost">测试连接</button>
+      <button id="db_push" class="btn">推送当前快照</button>
+    </div>
+    <p class="note" id="db_status"></p>
+    <div class="cap">
+      <strong>凭据风险请自行判断：</strong>key 存在浏览器 localStorage 里，
+      同机器上的其他脚本理论上能读到。<strong>只填 anon / 只写权限的 key，不要填 service role key。</strong>
+      本面板不会把凭据发到除你填的那个端点之外的任何地方。
+    </div>
+  </div>
+</section>
+
+<!-- ── 说明 ── -->
+<section id="tab-about" class="hide">
+  <div class="card">
+    <h2>数据真实性分三类</h2>
+    <table style="min-width:0">
+      <tr><td><span class="badge g">真实公开数据</span></td>
+          <td class="ttl">平台佣金、支付手续费率。来源链接与查询日期写在 <code>data/platforms.yaml</code> 文件头注释里。
+          例如 TikTok Shop 美区 referral fee 为 6%，<strong>已包含支付处理费，无单独交易手续费</strong>。</td></tr>
+      <tr><td><span class="badge y">估算占位值</span></td>
+          <td class="ttl">退货率（平台不公布，只能用自己店铺历史订单统计）、头程物流费率（货代一对一报价，不公开挂牌）。
+          这两项换成真实数字<strong>不需要改任何代码</strong>。</td></tr>
+      <tr><td><span class="badge r">训练用虚构</span></td>
+          <td class="ttl">示例商品清单、演示用竞品快照（URL 为不可路由占位域名）。
+          保留它们是为了让测试与演示<strong>不依赖网络</strong>。</td></tr>
+    </table>
+    <div class="cap">
+      用于任何真实经营决策前，请把后两类全部换成自己的真实数据。
+      平台费率会变，请以官方费率页为准。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>踩过的一个分析陷阱</h2>
+    <p class="note">
+      第一次用真实数据做对比时，系统报出 <strong>38 条「新品上榜」——全是假的</strong>。
+      原因是两次抓取的页数不同：前一次抓 1 页（前 30 名），后一次抓 2 页（前 88 名），
+      第 31–88 名的商品在前一份快照里根本不存在，自然全被判成新出现。
+      <strong>工具没算错，是对比方法错了。</strong>
+    </p>
+    <p class="note" style="margin-top:8px">
+      修法：自动只在两份快照<strong>共同覆盖的排名区间</strong>内比对，
+      范围不一致就在报告顶部警告。修完重跑同一组数据，38 条假新品全部消失，只剩 1 条真实降价。
+    </p>
+    <div class="cap">
+      <strong>数据工具最危险的不是算错，是算出一个看起来合理的错误结论。</strong>
+      38 条新品上榜如果没多想，写进周报就是一个完全错误的市场判断。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>三个入口，同一套逻辑</h2>
+    <table style="min-width:0">
+      <tr><td><strong>命令行</strong></td><td class="ttl"><code>python cli.py score-products</code> / <code>profit</code> / <code>monitor</code> / <code>ingest</code>。全部离线运行，无需账号与 API Key。</td></tr>
+      <tr><td><strong>AI 助手</strong></td><td class="ttl">MCP Server 暴露 6 个工具，含审批分级：4 个只读；起草 Listing 需人工审核；<strong>改价工具禁止自动执行 —— 函数里根本没有调用店铺 API 的代码</strong>。</td></tr>
+      <tr><td><strong>网页</strong></td><td class="ttl">本页面。计算公式由 Python 端移植，页面加载时会自动校验与 Python 结果一致（见页脚）。</td></tr>
+    </table>
+    <p class="note" style="margin-top:10px">
+      本项目<strong>不做</strong>自动改价、自动上架、自动投放广告、自动发送客户或达人消息 ——
+      这些永远需要人工在平台后台确认执行。
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div id="selfcheck"></div>
+  <p style="margin:8px 0 0">
+    代码由 AI 编码工具辅助生成，需求拆解、数据结构与业务逻辑设计由作者完成。
+    本工具提供计算框架，不构成经营建议。
+  </p>
+</footer>
+</div>
+
+<script>
+let D = null;
+
+/* ───── 计算逻辑：与 src/calculator.py 保持一致 ───── */
+function calcProfit(o){
+  const lg = D.logistics[o.market];
+  const logisticsCost = lg.base_fee + o.weight_kg * lg.rate_per_kg;
+  const fixed = o.cost_price + o.packaging_cost + logisticsCost;
+
+  const cfg = D.platforms[o.platform];
+  const rr  = cfg.return_rate || {};
+  const returnRate = (rr[o.category] !== undefined) ? rr[o.category]
+                   : (rr["default"] !== undefined ? rr["default"] : 0);
+  const rateSum = cfg.commission_rate + cfg.payment_fee_rate + returnRate;
+  if (rateSum >= 1) return {error:"平台费率总和超过 100%，配置有误"};
+
+  const breakeven = fixed / (1 - rateSum);
+
+  let price = o.price;
+  if (price === null || price === undefined || price === "" || isNaN(price)) {
+    const target = D.margin_scenarios[o.scenario];
+    const denom = 1 - rateSum - target;
+    if (denom <= 0) return {error:"目标毛利率 "+(target*100).toFixed(0)+"% 在当前费率结构下无法达成（费率已占 "+(rateSum*100).toFixed(1)+"%）"};
+    price = fixed / denom;
+  }
+  price = Number(price);
+
+  const commission = price * cfg.commission_rate;
+  const payment    = price * cfg.payment_fee_rate;
+  const reserve    = price * returnRate;
+  const profit     = price - fixed - commission - payment - reserve;
+  const margin     = price ? profit / price : 0;
+
+  return {
+    logisticsCost, fixed, price, commission, payment, reserve,
+    profit, margin, breakeven, returnRate, rateSum,
+    roas: margin > 0 ? 1/margin : null,
+  };
+}
+function profitScore(margin){
+  if (margin <= 0) return 0;
+  return Math.min(20, Math.max(0, (margin/0.30)*20));
+}
+
+/* ───── 工具 ───── */
+const $ = id => document.getElementById(id);
+const yuan = n => (n<0?"−":"") + "¥" + Math.abs(n).toFixed(2);
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ───── 顶部标注 ───── */
+function renderBadges(){
+  const real = D.mode === "real" && D.competitors_real && D.competitors_real.length;
+  $("badges").innerHTML =
+    '<span class="badge g">费率：真实公开数据</span>' +
+    '<span class="badge y">退货率/物流：估算占位</span>' +
+    '<span class="badge r">商品清单：训练用虚构</span>' +
+    (real ? '<span class="badge g">竞品：真实抓取 '+D.competitors_real.length+' 条</span>'
+          : '<span class="badge r">竞品：演示用虚构</span>');
+}
+
+/* ───── Tab 1 计算器 ───── */
+function initCalc(){
+  $("plat").innerHTML = Object.keys(D.platforms).map(k=>
+    `<option value="${k}">${k}</option>`).join("");
+  $("plat").value = "tiktok_shop";
+  $("mkt").innerHTML = Object.keys(D.logistics).map(k=>
+    `<option value="${k}">${k}</option>`).join("");
+
+  const cats = [...new Set(D.products.map(p=>p.category))].sort();
+  $("cat").innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join("");
+  $("cat").value = "home_organization";
+
+  $("preset").innerHTML = '<option value="">— 手动输入 —</option>' +
+    D.products.map((p,i)=>`<option value="${i}">${esc(p.sku)} ${esc(p.name)}</option>`).join("");
+
+  $("preset").addEventListener("change", e=>{
+    const i = e.target.value;
+    if (i === "") return;
+    const p = D.products[+i];
+    $("cost").value = p.cost_price; $("pack").value = p.packaging_cost;
+    $("wt").value = p.weight_kg;    $("cat").value = p.category;
+    $("price").value = p.planned_price != null ? p.planned_price : "";
+    renderCalc();
+  });
+
+  ["cost","pack","wt","cat","plat","mkt","scen","price"].forEach(id=>{
+    $(id).addEventListener("input", renderCalc);
+    $(id).addEventListener("change", renderCalc);
+  });
+  renderCalc();
+}
+
+function renderCalc(){
+  const r = calcProfit({
+    cost_price: +$("cost").value || 0,
+    packaging_cost: +$("pack").value || 0,
+    weight_kg: +$("wt").value || 0,
+    category: $("cat").value,
+    platform: $("plat").value,
+    market: $("mkt").value,
+    scenario: $("scen").value,
+    price: $("price").value === "" ? null : +$("price").value,
+  });
+
+  if (r.error){
+    $("kpis").innerHTML = `<div class="kpi neg"><div class="k">无法计算</div><div class="v" style="font-size:14px">${esc(r.error)}</div></div>`;
+    $("bar").innerHTML = ""; $("legend").innerHTML = ""; $("calcnote").innerHTML = "";
+    return;
+  }
+
+  const neg = r.profit <= 0;
+  $("kpis").innerHTML = `
+    <div class="kpi hero"><div class="k">保本价</div><div class="v">${yuan(r.breakeven)}</div></div>
+    <div class="kpi"><div class="k">${$("price").value===""?"建议定价":"实际售价"}</div><div class="v">${yuan(r.price)}</div></div>
+    <div class="kpi ${neg?"neg":""}"><div class="k">贡献利润</div><div class="v">${yuan(r.profit)}</div></div>
+    <div class="kpi ${neg?"neg":""}"><div class="k">贡献利润率</div><div class="v">${(r.margin*100).toFixed(1)}%</div></div>
+    <div class="kpi ${neg?"neg":""}"><div class="k">Broke-even ROAS</div><div class="v">${r.roas?r.roas.toFixed(2):"不适用"}</div></div>
+    <div class="kpi"><div class="k">选品利润分（满分20）</div><div class="v">${profitScore(r.margin).toFixed(2)}</div></div>`;
+
+  const parts = [
+    ["采购",  +$("cost").value||0, "#5b8def"],
+    ["包装",  +$("pack").value||0, "#8b6fd4"],
+    ["头程物流", r.logisticsCost,  "#d98a52"],
+    ["平台佣金", r.commission,     "#c9564f"],
+    ["支付手续费", r.payment,      "#b0574f"],
+    ["退款准备金", r.reserve,      "#7f8a95"],
+    [neg?"亏损":"贡献利润", Math.abs(r.profit), neg?"#a82a2a":"#2f9e68"],
+  ];
+  const total = parts.reduce((s,p)=>s+p[1],0) || 1;
+  $("bar").innerHTML = parts.map(p=>
+    `<i style="width:${p[1]/total*100}%;background:${p[2]}" title="${p[0]} ${yuan(p[1])}"></i>`).join("");
+  $("legend").innerHTML = parts.map(p=>
+    `<span><i class="sw" style="background:${p[2]}"></i>${p[0]} ${yuan(p[1])}</span>`).join("");
+
+  const cfg = D.platforms[$("plat").value];
+  let extra = "";
+  if (cfg.payment_fee_rate === 0 && $("plat").value.indexOf("tiktok") === 0){
+    extra = `<div class="cap ok"><strong>支付手续费为 0 不是 bug。</strong>
+      TikTok Shop 美区的 6% referral fee 已包含支付处理费，没有单独的交易手续费 —— 这是真实费率。</div>`;
+  }
+  if (neg){
+    extra += `<div class="cap"><strong>这个价格做不了。</strong>
+      保本价 ${yuan(r.breakeven)}，当前售价 ${yuan(r.price)}，每单亏 ${yuan(Math.abs(r.profit))}。
+      物流占固定成本 ${(r.logisticsCost/r.fixed*100).toFixed(0)}% ——
+      占比高说明是重货问题（换海外仓或本地发货），占比低则是客单价太低扛不住固定物流基础费。</div>`;
+  }
+  $("calcnote").innerHTML = extra +
+    `<p class="note">费率构成：平台佣金 ${(cfg.commission_rate*100).toFixed(2)}%
+     ＋ 支付 ${(cfg.payment_fee_rate*100).toFixed(2)}%
+     ＋ 退货准备金 ${(r.returnRate*100).toFixed(1)}%
+     ＝ <strong>${(r.rateSum*100).toFixed(2)}%</strong>；
+     保本价 = 固定成本 ${yuan(r.fixed)} ÷ (1 − ${(r.rateSum*100).toFixed(2)}%)。</p>`;
+}
+
+/* ───── Tab 2 评分 ───── */
+function renderScore(){
+  const rows = D.scores[$("sscen").value];
+  const max = 100;
+  let html = `<thead><tr><th>SKU</th><th>名称</th><th class="num">总分</th>
+    <th>分布</th><th class="num">需求25</th><th class="num">缺口20</th><th class="num">利润20</th>
+    <th class="num">物流15</th><th class="num">合规10</th><th class="num">内容10</th>
+    <th>淘汰原因 / 备注</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    html += `<tr class="${r.eliminated?"out":""}">
+      <td>${esc(r.sku)}</td><td>${esc(r.name)}</td>
+      <td class="num"><strong>${r.total.toFixed(2)}</strong></td>
+      <td><i class="mini" style="width:${Math.max(2,r.total/max*90)}px;background:${r.eliminated?"var(--bad)":"var(--accent)"}"></i></td>
+      <td class="num">${r.demand}</td><td class="num">${r.gap}</td>
+      <td class="num">${r.profit.toFixed(2)}</td><td class="num">${r.logistics}</td>
+      <td class="num">${r.compliance}</td><td class="num">${r.content}</td>
+      <td class="why">${esc(r.reason)}</td></tr>`;
+  });
+  $("stbl").innerHTML = html + "</tbody>";
+
+  const out = rows.filter(r=>r.eliminated);
+  const alive = rows.length - out.length;
+  $("elimsum").innerHTML = `共 ${rows.length} 个候选：<strong>${alive} 个存活</strong>，`
+    + `<strong>${out.length} 个淘汰</strong>。`
+    + (out.length ? `淘汰原因分两类 —— 合规红线 ${out.filter(r=>r.reason.indexOf("banned")>=0).length} 个，`
+      + `成本覆盖不了 ${out.filter(r=>r.reason.indexOf("贡献利润")>=0).length} 个。`
+      + `<strong>后者虽然系统给的原因是同一句，业务上却是两个不同问题：一个是重量问题，一个是客单价问题，解法不一样。</strong>` : "");
+}
+
+/* ───── Tab 3 竞品 ───── */
+function renderComp(){
+  const useReal = D.mode === "real" && D.competitors_real && D.competitors_real.length;
+  const comps = useReal ? D.competitors_real : D.competitors_demo;
+  const ch    = (useReal && D.changes_real) ? D.changes_real : D.changes_demo;
+
+  $("compsrc").textContent = useReal ? "真实抓取数据" : "演示用虚构数据";
+  $("compsrc").className = "badge " + (useReal ? "g" : "r");
+  $("compnote").innerHTML = useReal
+    ? "自有工具抓取的亚马逊公开 Best Sellers 榜单页，页面间隔 3 秒。促销字段标为 <code>unknown</code> —— 榜单页不含促销信息，<strong>不能留空冒充「无促销」</strong>。"
+    : "URL 为 <code>example-shop.local</code> 不可路由占位域名。保留虚构数据是为了让演示与测试不依赖网络。";
+
+  $("warnbox").innerHTML = ch.warning
+    ? `<div class="cap"><strong>⚠ ${esc(ch.warning)}</strong></div>` : "";
+
+  const tagOf = t => t==="price_drop" ? ["drop","降价"]
+    : t==="price_rise" ? ["rise","涨价"]
+    : t==="new_listing" ? ["new","新品上榜"]
+    : t==="delisted" ? ["other","下架"]
+    : t==="promotion_change" ? ["other","促销变化"]
+    : t==="rating_change" ? ["other","评分变化"] : ["other",t];
+
+  $("changes").innerHTML = ch.items.length
+    ? `<div class="tblwrap"><table><thead><tr><th>类型</th><th>商品</th><th>变化</th></tr></thead><tbody>`
+      + ch.items.map(c=>{const [cls,label]=tagOf(c.type);
+        return `<tr><td><span class="tag ${cls}">${label}</span></td>
+          <td class="ttl">${esc(c.title)}</td><td class="ttl">${esc(c.detail)}</td></tr>`;}).join("")
+      + "</tbody></table></div>"
+    : '<p class="note">本次快照对比未发现变化。</p>';
+
+  let h = `<thead><tr><th class="num">排名</th><th>商品标识</th><th>标题</th>
+    <th class="num">价格</th><th class="num">评分</th><th class="num">评价数</th><th>促销</th></tr></thead><tbody>`;
+  comps.forEach(c=>{
+    h += `<tr><td class="num">${esc(c.rank||"—")}</td><td>${esc(c.item_id)}</td>
+      <td class="ttl">${esc(c.title)}</td>
+      <td class="num">${Number(c.price).toFixed(2)}</td>
+      <td class="num">${esc(c.rating)}</td>
+      <td class="num">${Number(c.review_count||0).toLocaleString()}</td>
+      <td>${esc(c.promotion)}</td></tr>`;
+  });
+  $("ctbl").innerHTML = h + "</tbody>";
+}
+
+/* ───── 自校验：JS 移植是否与 Python 一致 ───── */
+function selfCheck(){
+  let checked = 0, bad = [];
+  D.products.forEach(p=>{
+    if (p.planned_price == null) return;
+    const r = calcProfit({
+      cost_price:p.cost_price, packaging_cost:p.packaging_cost, weight_kg:p.weight_kg,
+      category:p.category, platform:"tiktok_shop", market:"US",
+      scenario:"standard", price:p.planned_price,
+    });
+    if (r.error) return;
+    const expected = D.scores.standard.find(s=>s.sku===p.sku);
+    if (!expected || expected.eliminated) return;
+    checked++;
+    if (Math.abs(profitScore(r.margin) - expected.profit) > 0.01){
+      bad.push(p.sku + "（网页 " + profitScore(r.margin).toFixed(2) + " vs Python " + expected.profit.toFixed(2) + "）");
+    }
+  });
+  $("selfcheck").innerHTML = bad.length
+    ? `<div class="cap"><strong>⚠ 计算一致性校验失败：</strong>${bad.join("、")}</div>`
+    : `<div class="cap ok"><strong>✓ 计算一致性校验通过</strong> ——
+        页面 JS 对 ${checked} 个商品算出的贡献利润分，与 Python 端 <code>src/calculator.py</code> 的结果完全一致。
+        <strong>同一套公式两处实现，这个校验防的是两边算出不同答案。</strong></div>`;
+}
+
+/* ───── Tab 切换 ───── */
+$("nav").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if (!b) return;
+  [...$("nav").children].forEach(x=>x.setAttribute("aria-selected", x===b));
+  ["calc","score","comp","listing","ops","store","about"].forEach(t=>
+    $("tab-"+t).classList.toggle("hide", t !== b.dataset.tab));
+});
+
+/* ───── 启动 ───── */
+
+/* ═══════════ 本地服务探测 ═══════════ */
+let LOCAL = null;   // null = 未连接；否则是 {base, health}
+
+async function probeLocal(){
+  // 面板可能由本地服务自己伺服（同源），也可能从别的端口/Pages 打开
+  const bases = [location.origin, "http://127.0.0.1:8911", "http://127.0.0.1:8912"];
+  for (const b of bases){
+    try{
+      const ctl = new AbortController();
+      const t = setTimeout(()=>ctl.abort(), 1200);
+      const r = await fetch(b + "/api/health", {signal: ctl.signal});
+      clearTimeout(t);
+      if (!r.ok) continue;
+      const h = await r.json();
+      if (h && h.mode === "local") return {base: b, health: h};
+    }catch(e){ /* 下一个 */ }
+  }
+  return null;
+}
+
+async function api(path, body){
+  if (!LOCAL) throw new Error("本地服务未连接");
+  const opt = body ? {method:"POST", headers:{"Content-Type":"application/json"},
+                      body: JSON.stringify(body)} : {};
+  const r = await fetch(LOCAL.base + path, opt);
+  const j = await r.json();
+  if (j && j.error) throw new Error(j.error);
+  return j;
+}
+
+/* ═══════════ 能力矩阵 ═══════════ */
+function renderModeBanner(){
+  const on = !!LOCAL;
+  const scrape = on && LOCAL.health.capabilities.scrape;
+
+  $("listingmode").className = "cap ok";
+  $("listingmode").innerHTML = on
+    ? "<strong>本地服务已连接</strong> —— Prompt 由服务端按 <code>skills/listing/</code> 的真实模板拼装。"
+    : "<strong>只读模式</strong> —— 未检测到本地服务，Prompt 用页面内置的模板骨架拼装，内容一致但不含模板全文。";
+
+  $("opsmode").innerHTML = on
+    ? `<div class="cap ok"><strong>本地服务已连接</strong>（${esc(LOCAL.base)}）。`
+      + (scrape ? "抓取能力可用。" : "<strong>但找不到 amzrank.py</strong>，抓取不可用 —— 把抓取脚本放到 <code>../amzrank-stage/scraper/</code> 下。")
+      + "</div>"
+    : `<div class="cap"><strong>抓取需要本地服务。</strong>
+        浏览器同源策略（CORS）不允许网页直接抓取电商平台页面 —— 这是浏览器安全底层设计，绕不过。
+        在项目目录运行 <code>python serve.py --open</code> 后刷新本页即可解锁。</div>`;
+
+  const dis = !on;
+  ["sc_run","mo_run","wf_run"].forEach(id=>{ if($(id)) $(id).disabled = dis; });
+  if ($("sc_run")) $("sc_run").disabled = !scrape;
+  const bl = $("badge_local");
+  if (bl){ bl.textContent = on ? "已连接" : "需本地服务"; bl.className = "badge " + (on?"g":"y"); }
+
+  if (on){
+    const h = LOCAL.health;
+    // 默认选中有已验证类目的站点，而不是字母序第一个
+    const ver0 = h.verified_categories || {};
+    const preferred = h.allowed_sites.find(s=>(ver0[s]||[]).length) || h.allowed_sites[0];
+    $("sc_site").innerHTML = h.allowed_sites.map(s=>
+      `<option value="${s}"${s===preferred?" selected":""}>${s}${(ver0[s]||[]).length?" ✓":""}</option>`).join("");
+    $("catlist").innerHTML = (h.candidate_categories||[]).map(c=>`<option value="${c}">`).join("");
+    const ver = ver0[$("sc_site").value] || [];
+    $("sc_hint").innerHTML = (ver.length ? `已验证可用：<strong>${ver.join("、")}</strong>。其余为候选，未逐个验证。<br>` : "")
+      + esc(h.slug_hint||"");
+  } else {
+    $("sc_site").innerHTML = "<option>us</option>";
+    $("sc_hint").textContent = "连接本地服务后显示可用站点与类目。";
+  }
+}
+
+/* ═══════════ 文案生成 ═══════════ */
+const FALLBACK_LAYER = {
+  planning:"# 决策层：生成内容策略卡\n\n你是跨境电商 Listing 策略负责人。根据下面的产品信息，产出结构化「内容策略卡」，作为后续执行层唯一输入。不要在这一层写文案。\n\n输出必须是合法 JSON，含：core_selling_points_ranked（按优先级排序，不超过 4 项，必须来自输入的 core_features，不得凭空新增）、target_keywords、tone、avoid_claims（结合类目主动列出至少 2 条常见合规雷区）、target_customer。",
+  amazon:"# 执行层：Amazon Listing\n\n输入是决策层的内容策略卡。产出：① 标题（主关键词+属性+场景，≤200 字符）② 五点描述（正好 5 条，每条大写关键词开头）③ 后台关键词（8-10 个，只用策略卡里的词及自然变体）。禁止使用 avoid_claims 里的表述，禁止堆砌竞品品牌词。",
+  shopify:"# 执行层：独立站文案\n\n输入是决策层的内容策略卡。产出：① 产品描述长文案 150-250 词，结构为「场景痛点 → 卖点逐条展开 → 使用/保养提示 → 号召行动」② SEO 元信息：Meta Title ≤60 字符、Meta Description ≤160 字符，须含至少一个 target_keywords。禁止编造评测数据、评价数量或畅销榜排名。",
+  tiktok:"# 执行层：TikTok Shop\n\n输入是决策层的内容策略卡。产出：① 短标题 ≤34 字符，突出排第一的核心卖点 ② 15 秒口播稿，分三段：[Hook 0-3s] 痛点或场景钩子 / [Body 3-11s] 1-2 个核心卖点 / [CTA 11-15s] 行动号召。禁止虚构达人身份、粉丝量或使用体验。",
+  qa:"# 质检层：合规风险扫描\n\n输入是执行层产出的所有平台文案。逐条检查以下风险类型并只输出发现的问题：医疗功效宣称（治疗/治愈/anti-allergic）、绝对化用语（最好/第一/唯一/the best）、虚假认证声称（无实据的 FDA 认证等）、编造社会证明、字数超平台限制。\n\n⚠️ 这不是任何平台的官方违禁词库，只是公开可查的常见风险类型整理，最终以目标平台最新政策为准。",
+};
+
+function listingPayload(){
+  return {
+    product_name: $("lp_name").value.trim(),
+    category: $("lp_cat").value.trim(),
+    core_features: $("lp_feat").value.split("\n").map(s=>s.trim()).filter(Boolean),
+    target_platform: ["amazon","independent_site","tiktok_shop"],
+    target_market: $("lp_mkt").value,
+    tone: $("lp_tone").value.trim(),
+  };
+}
+
+async function genListing(){
+  const layer = $("lp_layer").value;
+  const payload = listingPayload();
+  $("lp_status").textContent = "生成中…";
+  try{
+    let prompt;
+    if (LOCAL){
+      const r = await api("/api/listing-prompt", {layer, payload});
+      prompt = r.prompt;
+      $("lp_status").innerHTML = `已用服务端真实模板生成（${prompt.length} 字符）。<strong>本面板不调用任何 LLM、不需要 API Key。</strong>`;
+    } else {
+      prompt = FALLBACK_LAYER[layer] + "\n\n---\n\n## 本次输入\n\n```json\n"
+             + JSON.stringify(payload, null, 2) + "\n```\n";
+      $("lp_status").innerHTML = `已用页面内置骨架生成（${prompt.length} 字符）。连接本地服务可拿到模板全文。`;
+    }
+    $("lp_out").value = prompt;
+  }catch(e){
+    $("lp_status").textContent = "失败：" + e.message;
+  }
+}
+
+/* ═══════════ 抓取 ═══════════ */
+let pollTimer = null;
+
+async function runScrape(){
+  const body = {
+    site: $("sc_site").value,
+    category: $("sc_cat").value.trim(),
+    pages: +$("sc_pages").value || 1,
+    delay: +$("sc_delay").value || 3,
+  };
+  $("sc_log").textContent = "";
+  $("sc_status").textContent = "提交中…";
+  try{
+    const r = await api("/api/scrape", body);
+    $("sc_status").innerHTML = `任务 <code>${r.job_id}</code> 已启动：${r.site} / ${r.category} / ${r.pages} 页 / 间隔 ${r.delay}s`
+      + `${(r.pages!==body.pages||r.delay!==body.delay) ? '<br><strong>注意：参数被服务端钳制到安全范围</strong>' : ''}`;
+    pollJob(r.job_id, "sc_log", "sc_status", res=>{
+      $("sc_status").innerHTML = `✓ 抓到 <strong>${res.rows}</strong> 条 → <code>${esc(res.csv)}</code>，已入库（快照 <code>${esc(res.snapshot_date)}</code>）`;
+      loadSnapshots();
+    });
+  }catch(e){ $("sc_status").textContent = "失败：" + e.message; }
+}
+
+function pollJob(jobId, logEl, statusEl, onDone){
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async ()=>{
+    try{
+      const j = await api("/api/job?id=" + jobId);
+      $(logEl).textContent = (j.log||[]).join("\n");
+      $(logEl).scrollTop = $(logEl).scrollHeight;
+      if (j.status === "running") return;
+      clearInterval(pollTimer); pollTimer = null;
+      if (j.status === "error"){
+        $(statusEl).innerHTML = `<strong style="color:var(--bad)">任务失败</strong>：${esc((j.result||{}).error||"")}`;
+      } else if (onDone) onDone(j.result||{});
+    }catch(e){ clearInterval(pollTimer); pollTimer=null; $(statusEl).textContent="轮询失败："+e.message; }
+  }, 2500);
+}
+
+/* ═══════════ 快照与对比 ═══════════ */
+let SNAPS = [];
+
+async function loadSnapshots(){
+  if (!LOCAL){
+    ["mo_a","mo_b","wf_input"].forEach(id=>{
+      if ($(id)) $(id).innerHTML = '<option value="">需本地服务</option>'; });
+    return;
+  }
+  try{
+    const r = await api("/api/snapshots");
+    SNAPS = r.snapshots || [];
+    const opts = SNAPS.map(s=>
+      `<option value="${esc(s.path)}">${esc(s.name)} · ${s.rows} 行${s.real?" · 真实":""}</option>`).join("");
+    ["mo_a","mo_b","wf_input"].forEach(id=>{ if ($(id)) $(id).innerHTML = opts; });
+    if (SNAPS.length > 1) $("mo_b").selectedIndex = SNAPS.length - 1;
+  }catch(e){ /* 忽略 */ }
+}
+
+let lastCompare = null;
+
+async function runCompare(){
+  $("mo_status").textContent = "对比中…";
+  try{
+    const r = await api("/api/monitor", {from: $("mo_a").value, to: $("mo_b").value});
+    lastCompare = {from:$("mo_a").value, to:$("mo_b").value, at:new Date().toISOString(), ...r};
+    $("mo_status").innerHTML = `发现 <strong>${r.items.length}</strong> 条变化`;
+    const tag = t => t==="price_drop"?["drop","降价"]:t==="price_rise"?["rise","涨价"]
+      :t==="new_listing"?["new","新品上榜"]:["other",t];
+    $("mo_out").innerHTML = (r.warning ? `<div class="cap"><strong>⚠ ${esc(r.warning)}</strong></div>` : "")
+      + (r.items.length
+        ? `<div class="tblwrap"><table><thead><tr><th>类型</th><th>商品</th><th>变化</th></tr></thead><tbody>`
+          + r.items.map(c=>{const [cls,label]=tag(c.change_type);
+            return `<tr><td><span class="tag ${cls}">${label}</span></td>
+              <td class="ttl">${esc(c.title)}</td><td class="ttl">${esc(c.detail)}</td></tr>`;}).join("")
+          + `</tbody></table></div>`
+        : '<p class="note">两份快照无差异。</p>');
+  }catch(e){ $("mo_status").textContent = "失败：" + e.message; }
+}
+
+async function runWorkflow(){
+  $("wf_status").textContent = "运行中…"; $("wf_out").textContent = "";
+  try{
+    const r = await api("/api/workflow", {
+      input: $("wf_input").value, prev_date: $("wf_prev").value.trim() });
+    pollJob(r.job_id, "wf_out", "wf_status", res=>{
+      $("wf_status").innerHTML = res.report ? `✓ 报告已生成：<code>${esc(res.report)}</code>` : "✓ 完成";
+      if (res.content) $("wf_out").textContent = res.content;
+    });
+  }catch(e){ $("wf_status").textContent = "失败：" + e.message; }
+}
+
+/* ═══════════ 浏览器本地存储 ═══════════ */
+const LS_KEY = "cbops.snapshots.v1";
+
+function lsRead(){
+  try{ return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
+  catch(e){ return []; }
+}
+function lsWrite(arr){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(arr)); return true; }
+  catch(e){ return false; }
+}
+function saveCompare(){
+  if (!lastCompare){ $("mo_status").textContent = "先做一次对比再保存。"; return; }
+  const arr = lsRead();
+  arr.push({id: Date.now(), ...lastCompare});
+  $("mo_status").textContent = lsWrite(arr)
+    ? "已存到浏览器本地（第 " + arr.length + " 条）。只在这台机器这个浏览器里。"
+    : "保存失败 —— 浏览器可能禁用了本地存储或空间已满。";
+  renderStore();
+}
+function renderStore(){
+  const arr = lsRead();
+  let avail = true;
+  try{ localStorage.setItem("cbops.probe","1"); localStorage.removeItem("cbops.probe"); }
+  catch(e){ avail = false; }
+
+  $("ls_status").innerHTML = !avail
+    ? "<strong>这个浏览器不可用本地存储</strong>（隐私模式或已禁用站点数据）。"
+    : arr.length ? `已存 <strong>${arr.length}</strong> 条对比结果，约 ${(JSON.stringify(arr).length/1024).toFixed(1)} KB。`
+      : "还没存任何东西。到「抓取与工作流」页做一次对比后点「把结果存到浏览器」。";
+
+  $("ls_list").innerHTML = arr.length
+    ? `<div class="tblwrap"><table><thead><tr><th>时间</th><th>基准</th><th>对比</th><th class="num">变化</th></tr></thead><tbody>`
+      + arr.slice().reverse().map(r=>`<tr>
+          <td>${esc((r.at||"").slice(0,19).replace("T"," "))}</td>
+          <td class="ttl">${esc((r.from||"").split("/").pop())}</td>
+          <td class="ttl">${esc((r.to||"").split("/").pop())}</td>
+          <td class="num">${(r.items||[]).length}</td></tr>`).join("")
+      + `</tbody></table></div>` : "";
+}
+function exportStore(){
+  const arr = lsRead();
+  if (!arr.length){ $("ls_status").textContent = "没有可导出的数据。"; return; }
+  // 面板在受限环境下可能无法触发下载，所以同时把 JSON 显示出来兜底
+  const text = JSON.stringify(arr, null, 2);
+  try{
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], {type:"application/json"}));
+    a.download = "cbops-snapshots.json"; a.click();
+    URL.revokeObjectURL(a.href);
+    $("ls_status").textContent = "已触发下载。若浏览器拦截了下载，可从下方文本框手动复制。";
+  }catch(e){ $("ls_status").textContent = "下载被拦截，请从下方手动复制。"; }
+  $("ls_list").insertAdjacentHTML("afterbegin",
+    `<textarea rows="8" readonly style="width:100%;margin-bottom:10px;padding:8px;
+      font:11.5px/1.5 ui-monospace,monospace;border:1px solid var(--line);
+      border-radius:6px;background:var(--bg);color:var(--ink)">${esc(text)}</textarea>`);
+}
+
+/* ═══════════ 自建数据库 ═══════════ */
+const DB_KEY = "cbops.db.v1";
+function dbCfg(){ try{ return JSON.parse(localStorage.getItem(DB_KEY)||"{}"); }catch(e){ return {}; } }
+function dbSave(){
+  const cfg = {url: $("db_url").value.trim(), key: $("db_key").value.trim()};
+  try{
+    localStorage.setItem(DB_KEY, JSON.stringify(cfg));
+    $("db_status").textContent = cfg.url ? "配置已存到浏览器本地。" : "已清空配置。";
+  }catch(e){ $("db_status").textContent = "保存失败：浏览器本地存储不可用。"; }
+}
+async function dbTest(){
+  const cfg = dbCfg();
+  if (!cfg.url){ $("db_status").textContent = "先填端点并保存。"; return; }
+  $("db_status").textContent = "测试中…";
+  try{
+    const r = await fetch(cfg.url + (cfg.url.includes("?")?"&":"?") + "limit=1", {
+      headers: cfg.key ? {"apikey":cfg.key, "Authorization":"Bearer "+cfg.key} : {} });
+    $("db_status").innerHTML = r.ok
+      ? `✓ 连接成功（HTTP ${r.status}）`
+      : `连接返回 HTTP ${r.status} —— 检查端点、表名与 key 权限。`;
+  }catch(e){
+    $("db_status").innerHTML = `连接失败：${esc(e.message)}。<br>`
+      + `<strong>最常见原因是目标数据库没有开放 CORS</strong> —— `
+      + `浏览器只能直连显式允许跨域的服务（Supabase、PocketBase 这类）。`;
+  }
+}
+async function dbPush(){
+  const cfg = dbCfg();
+  if (!cfg.url){ $("db_status").textContent = "先配置端点。"; return; }
+  const comps = (D.mode==="real" && D.competitors_real) ? D.competitors_real : D.competitors_demo;
+  if (!comps || !comps.length){ $("db_status").textContent = "没有可推送的快照。"; return; }
+  $("db_status").textContent = `推送 ${comps.length} 条…`;
+  try{
+    const r = await fetch(cfg.url, {
+      method:"POST",
+      headers: Object.assign({"Content-Type":"application/json", "Prefer":"return=minimal"},
+        cfg.key ? {"apikey":cfg.key, "Authorization":"Bearer "+cfg.key} : {}),
+      body: JSON.stringify(comps),
+    });
+    $("db_status").innerHTML = r.ok ? `✓ 已推送 ${comps.length} 条（HTTP ${r.status}）`
+      : `推送返回 HTTP ${r.status} —— 检查表结构是否与快照字段匹配，以及 key 是否有写权限。`;
+  }catch(e){ $("db_status").innerHTML = `推送失败：${esc(e.message)}（多半是 CORS 未开放）`; }
+}
+
+/* ═══════════ 绑定 ═══════════ */
+function initOps(){
+  $("lp_gen").addEventListener("click", genListing);
+  $("lp_copy").addEventListener("click", async ()=>{
+    const v = $("lp_out").value;
+    if (!v){ $("lp_status").textContent = "先生成 Prompt。"; return; }
+    try{ await navigator.clipboard.writeText(v); $("lp_status").textContent = "已复制到剪贴板。"; }
+    catch(e){ $("lp_out").select(); $("lp_status").textContent = "剪贴板被拦截，已全选，请按 Ctrl+C。"; }
+  });
+  $("sc_run").addEventListener("click", runScrape);
+  $("sc_refresh").addEventListener("click", loadSnapshots);
+  $("sc_site").addEventListener("change", ()=>{
+    if (!LOCAL) return;
+    const ver = (LOCAL.health.verified_categories||{})[$("sc_site").value] || [];
+    $("sc_hint").innerHTML = (ver.length ? `已验证可用：<strong>${ver.join("、")}</strong>。其余为候选，未逐个验证。<br>`
+      : "此站点尚无已验证类目，请去榜单页地址栏确认真实 slug。<br>") + esc(LOCAL.health.slug_hint||"");
+  });
+  $("mo_run").addEventListener("click", runCompare);
+  $("mo_save").addEventListener("click", saveCompare);
+  $("wf_run").addEventListener("click", runWorkflow);
+  $("ls_export").addEventListener("click", exportStore);
+  $("ls_clear").addEventListener("click", ()=>{
+    try{ localStorage.removeItem(LS_KEY); }catch(e){}
+    renderStore(); $("ls_status").textContent = "已清空。";
+  });
+  $("db_save").addEventListener("click", dbSave);
+  $("db_test").addEventListener("click", dbTest);
+  $("db_push").addEventListener("click", dbPush);
+
+  const cfg = dbCfg();
+  if (cfg.url) $("db_url").value = cfg.url;
+  if (cfg.key) $("db_key").value = cfg.key;
+
+  genListing();
+  renderStore();
+}
+
+// 优先读本地真实数据版（data.local.json，不进公开仓库），读不到回退到演示版
+fetch("data.local.json")
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .catch(() => fetch("data.json").then(r=>r.json()))
+  .then(d=>{
+  D = d;
+  renderBadges();
+  initCalc();
+  renderScore();
+  renderComp();
+  selfCheck();
+  $("sscen").addEventListener("change", renderScore);
+  initOps();
+  probeLocal().then(l=>{ LOCAL = l; renderModeBanner(); loadSnapshots(); });
+}).catch(err=>{
+  document.querySelector(".wrap").insertAdjacentHTML("afterbegin",
+    '<div class="cap"><strong>读不到 data.json。</strong>请先运行 '
+    + '<code>python build_dashboard.py</code> 生成数据，并通过 HTTP 打开本页（不能用 file:// 直接打开）。</div>');
+  console.error(err);
+});
+</script>
+</body>
+</html>

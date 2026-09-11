@@ -1,0 +1,7 @@
+platform,item_id,title,price,rating,review_count,promotion,url
+tiktok_shop,TT-8841,Travel Foldable Storage Bag,10.99,4.6,1855,flash_sale_15pct,https://example-shop.local/tt-8841
+tiktok_shop,TT-9012,Compact Packing Cubes Set,9.49,4.4,940,coupon_10pct,https://example-shop.local/tt-9012
+tiktok_shop,TT-9188,Mesh Travel Organizer Bag Set,8.99,4.2,140,new_listing,https://example-shop.local/tt-9188
+amazon,AZ-5521,Foldable Travel Storage Organizer,15.99,4.5,4265,none,https://example-shop.local/az-5521
+amazon,AZ-5599,Vacuum Compression Storage Bags,11.99,4.4,2915,none,https://example-shop.local/az-5599
+independent_site,SHP-0231,Portable Travel Organizer Pouch,17.50,4.7,321,none,https://example-shop.local/shp-0231

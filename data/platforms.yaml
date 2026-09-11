@@ -1,0 +1,86 @@
+# 平台佣金与支付手续费配置 —— 真实公开费率
+#
+# 数据来源与查询日期（2026-09-10 检索）：
+#   Amazon 佣金：多家卖家服务商整理的 2026 费率表，标准类目 15%，消费电子 8%，
+#                服饰 17%，Amazon 设备配件 45%（最高），每件最低 $0.30。
+#                Amazon 官方声明 2026 年佣金比例未变，沿用 2025 结构。
+#                权威来源应查 Seller Central 官方费率页，本文件数据来自第三方整理：
+#                https://feedvisor.com/university/referral-fee/
+#                https://www.inventoryhero.ai/blog/amazon-referral-fees
+#   TikTok Shop 美区：referral fee 统一 6%（部分珠宝 5%），**已包含支付处理费，
+#                无单独交易手续费**；新卖家 60 天内首单可享 30 天 3% 促销费率。
+#                https://www.getonecart.com/tiktok-shop-seller-fees/
+#                https://www.dashboardly.io/post/tiktok-shop-fees-2026-the-complete-seller-fee-guide
+#   独立站支付：Stripe 美区线上卡费率 2.9% + $0.30；Shopify Payments Basic 方案 2.9%
+#                （Grow 2.7% / Advanced 2.5% / Plus 约 2.15%），均加 $0.30 固定费；
+#                PayPal 结账 3.49% + $0.49。跨境收款 Shopify Payments 另加 1.5% 货币转换费。
+#                https://eightx.co/blog/average-ecommerce-payment-processing-fee-by-platform-2026
+#                https://ecomcalctools.com/blog/stripe-fees-2026/
+#
+# ⚠️ 两点必读：
+# 1. 佣金比例按类目和价格档位变化，本文件只取常见档位。实际项目必须逐个类目核对官方费率页。
+# 2. 退货率（return_rate）**不是平台公布数据**，各家差异极大，只能用自己店铺历史订单统计。
+#    下面的数值仍是**估算占位值**，已单独标注，不要当成真实数据引用。
+
+amazon_fba:
+  # 标准类目佣金 15%（家居厨房、运动户外、玩具、办公、工具等均为 15%）
+  commission_rate: 0.15
+  # FBA 模式下支付处理已含在佣金内，无单独支付费
+  payment_fee_rate: 0.0
+  # ⚠️ 以下退货率为估算占位值，非平台公布数据
+  return_rate:
+    default: 0.08
+    baby_safety: 0.12
+    beauty_health: 0.10
+    electronics_accessory: 0.10   # 消费电子类佣金实际为 8%，见 platform 变体说明
+
+amazon_fba_electronics:
+  # 消费电子 / 电脑 / 大家电 / 游戏主机：佣金 8%（全类目最低档）
+  commission_rate: 0.08
+  payment_fee_rate: 0.0
+  return_rate:
+    default: 0.10
+    electronics_accessory: 0.10
+
+amazon_fba_apparel:
+  # 服饰类：佣金 17%
+  commission_rate: 0.17
+  payment_fee_rate: 0.0
+  return_rate:
+    default: 0.20   # ⚠️ 估算占位值；服饰退货率行业普遍偏高
+
+tiktok_shop:
+  # 美区 referral fee 6%，已包含支付处理，无单独交易费
+  commission_rate: 0.06
+  payment_fee_rate: 0.0
+  # ⚠️ 估算占位值
+  return_rate:
+    default: 0.06
+    baby_safety: 0.10
+    beauty_health: 0.09
+
+tiktok_shop_new_seller:
+  # 新卖家促销费率 3%（首单后 30 天内有效，到期恢复 6%）
+  commission_rate: 0.03
+  payment_fee_rate: 0.0
+  return_rate:
+    default: 0.06
+
+independent_site:
+  # 独立站无平台佣金
+  commission_rate: 0.0
+  # Stripe / Shopify Payments Basic 美区费率 2.9%
+  # 注：真实模型还应计入每笔 $0.30 固定费和跨境 1.5% 货币转换费，本简化模型未计入
+  payment_fee_rate: 0.029
+  # ⚠️ 估算占位值
+  return_rate:
+    default: 0.05
+    baby_safety: 0.10
+    beauty_health: 0.08
+
+independent_site_paypal:
+  # PayPal 结账费率 3.49%（另有 $0.49 固定费，本模型未计入）
+  commission_rate: 0.0
+  payment_fee_rate: 0.0349
+  return_rate:
+    default: 0.05

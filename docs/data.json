@@ -1,0 +1,728 @@
+{
+ "mode": "demo",
+ "platforms": {
+  "amazon_fba": {
+   "commission_rate": 0.15,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.08,
+    "baby_safety": 0.12,
+    "beauty_health": 0.1,
+    "electronics_accessory": 0.1
+   }
+  },
+  "amazon_fba_electronics": {
+   "commission_rate": 0.08,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.1,
+    "electronics_accessory": 0.1
+   }
+  },
+  "amazon_fba_apparel": {
+   "commission_rate": 0.17,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.2
+   }
+  },
+  "tiktok_shop": {
+   "commission_rate": 0.06,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.06,
+    "baby_safety": 0.1,
+    "beauty_health": 0.09
+   }
+  },
+  "tiktok_shop_new_seller": {
+   "commission_rate": 0.03,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.06
+   }
+  },
+  "independent_site": {
+   "commission_rate": 0.0,
+   "payment_fee_rate": 0.029,
+   "return_rate": {
+    "default": 0.05,
+    "baby_safety": 0.1,
+    "beauty_health": 0.08
+   }
+  },
+  "independent_site_paypal": {
+   "commission_rate": 0.0,
+   "payment_fee_rate": 0.0349,
+   "return_rate": {
+    "default": 0.05
+   }
+  }
+ },
+ "logistics": {
+  "US": {
+   "base_fee": 15,
+   "rate_per_kg": 20
+  },
+  "EU": {
+   "base_fee": 18,
+   "rate_per_kg": 24
+  },
+  "SEA": {
+   "base_fee": 8,
+   "rate_per_kg": 12
+  }
+ },
+ "margin_scenarios": {
+  "conservative": 0.2,
+  "standard": 0.3,
+  "aggressive": 0.4
+ },
+ "products": [
+  {
+   "sku": "TRAVEL-001",
+   "name": "旅行折叠收纳袋",
+   "category": "home_organization",
+   "cost_price": 18.0,
+   "packaging_cost": 2.0,
+   "weight_kg": 0.4,
+   "volume_l": 3.5,
+   "compliance_flag": "ok",
+   "demand_score": 22.0,
+   "gap_score": 16.0,
+   "logistics_score": 13.0,
+   "content_score": 8.0,
+   "planned_price": 78.0
+  },
+  {
+   "sku": "TRAVEL-002",
+   "name": "真空压缩收纳袋",
+   "category": "home_organization",
+   "cost_price": 9.0,
+   "packaging_cost": 1.5,
+   "weight_kg": 0.3,
+   "volume_l": 2.8,
+   "compliance_flag": "ok",
+   "demand_score": 20.0,
+   "gap_score": 10.0,
+   "logistics_score": 14.0,
+   "content_score": 6.0,
+   "planned_price": 52.0
+  },
+  {
+   "sku": "TRAVEL-003",
+   "name": "宠物伸缩牵引绳",
+   "category": "pet_supplies",
+   "cost_price": 18.0,
+   "packaging_cost": 2.0,
+   "weight_kg": 0.4,
+   "volume_l": 1.2,
+   "compliance_flag": "ok",
+   "demand_score": 20.0,
+   "gap_score": 15.0,
+   "logistics_score": 13.0,
+   "content_score": 7.0,
+   "planned_price": 68.0
+  },
+  {
+   "sku": "TRAVEL-004",
+   "name": "儿童安全座椅头枕",
+   "category": "baby_safety",
+   "cost_price": 35.0,
+   "packaging_cost": 3.0,
+   "weight_kg": 0.9,
+   "volume_l": 6.0,
+   "compliance_flag": "review_needed",
+   "demand_score": 15.0,
+   "gap_score": 12.0,
+   "logistics_score": 9.0,
+   "content_score": 5.0,
+   "planned_price": 125.0
+  },
+  {
+   "sku": "TRAVEL-005",
+   "name": "磁吸车载手机支架",
+   "category": "electronics_accessory",
+   "cost_price": 12.0,
+   "packaging_cost": 1.0,
+   "weight_kg": 0.2,
+   "volume_l": 0.8,
+   "compliance_flag": "ok",
+   "demand_score": 18.0,
+   "gap_score": 8.0,
+   "logistics_score": 14.0,
+   "content_score": 6.0,
+   "planned_price": 55.0
+  },
+  {
+   "sku": "TRAVEL-006",
+   "name": "美白牙贴",
+   "category": "beauty_health",
+   "cost_price": 6.0,
+   "packaging_cost": 0.8,
+   "weight_kg": 0.1,
+   "volume_l": 0.3,
+   "compliance_flag": "banned",
+   "demand_score": 24.0,
+   "gap_score": 18.0,
+   "logistics_score": 15.0,
+   "content_score": 9.0,
+   "planned_price": 25.0
+  },
+  {
+   "sku": "TRAVEL-007",
+   "name": "桌面收纳盒",
+   "category": "home_organization",
+   "cost_price": 10.0,
+   "packaging_cost": 1.2,
+   "weight_kg": 0.5,
+   "volume_l": 4.0,
+   "compliance_flag": "ok",
+   "demand_score": 16.0,
+   "gap_score": 9.0,
+   "logistics_score": 13.0,
+   "content_score": 7.0,
+   "planned_price": 60.0
+  },
+  {
+   "sku": "TRAVEL-008",
+   "name": "户外折叠椅",
+   "category": "outdoor",
+   "cost_price": 28.0,
+   "packaging_cost": 3.5,
+   "weight_kg": 2.1,
+   "volume_l": 15.0,
+   "compliance_flag": "ok",
+   "demand_score": 17.0,
+   "gap_score": 14.0,
+   "logistics_score": 7.0,
+   "content_score": 8.0,
+   "planned_price": 72.0
+  },
+  {
+   "sku": "TRAVEL-009",
+   "name": "防水手机袋",
+   "category": "electronics_accessory",
+   "cost_price": 5.0,
+   "packaging_cost": 0.6,
+   "weight_kg": 0.05,
+   "volume_l": 0.2,
+   "compliance_flag": "ok",
+   "demand_score": 19.0,
+   "gap_score": 11.0,
+   "logistics_score": 15.0,
+   "content_score": 5.0,
+   "planned_price": 36.0
+  },
+  {
+   "sku": "TRAVEL-010",
+   "name": "儿童退热贴",
+   "category": "baby_safety",
+   "cost_price": 4.0,
+   "packaging_cost": 0.5,
+   "weight_kg": 0.05,
+   "volume_l": 0.15,
+   "compliance_flag": "review_needed",
+   "demand_score": 21.0,
+   "gap_score": 10.0,
+   "logistics_score": 15.0,
+   "content_score": 4.0,
+   "planned_price": 20.0
+  }
+ ],
+ "scores": {
+  "conservative": [
+   {
+    "sku": "TRAVEL-001",
+    "name": "旅行折叠收纳袋",
+    "total": 89.0,
+    "demand": 22.0,
+    "gap": 16.0,
+    "profit": 20.0,
+    "logistics": 13.0,
+    "compliance": 10.0,
+    "content": 8.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-003",
+    "name": "宠物伸缩牵引绳",
+    "total": 81.51,
+    "demand": 20.0,
+    "gap": 15.0,
+    "profit": 16.51,
+    "logistics": 13.0,
+    "compliance": 10.0,
+    "content": 7.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-009",
+    "name": "防水手机袋",
+    "total": 78.67,
+    "demand": 19.0,
+    "gap": 11.0,
+    "profit": 18.67,
+    "logistics": 15.0,
+    "compliance": 10.0,
+    "content": 5.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-002",
+    "name": "真空压缩收纳袋",
+    "total": 78.28,
+    "demand": 20.0,
+    "gap": 10.0,
+    "profit": 18.28,
+    "logistics": 14.0,
+    "compliance": 10.0,
+    "content": 6.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-005",
+    "name": "磁吸车载手机支架",
+    "total": 75.88,
+    "demand": 18.0,
+    "gap": 8.0,
+    "profit": 19.88,
+    "logistics": 14.0,
+    "compliance": 10.0,
+    "content": 6.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-007",
+    "name": "桌面收纳盒",
+    "total": 73.45,
+    "demand": 16.0,
+    "gap": 9.0,
+    "profit": 18.45,
+    "logistics": 13.0,
+    "compliance": 10.0,
+    "content": 7.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-004",
+    "name": "儿童安全座椅头枕",
+    "total": 64.13,
+    "demand": 15.0,
+    "gap": 12.0,
+    "profit": 18.13,
+    "logistics": 9.0,
+    "compliance": 5.0,
+    "content": 5.0,
+    "eliminated": false,
+    "reason": "合规标记为 review_needed：未淘汰，但需人工复核（如儿童/健康类目的功效表述）"
+   },
+   {
+    "sku": "TRAVEL-006",
+    "name": "美白牙贴",
+    "total": 0.0,
+    "demand": 24.0,
+    "gap": 18.0,
+    "profit": 0.0,
+    "logistics": 15.0,
+    "compliance": 0.0,
+    "content": 9.0,
+    "eliminated": true,
+    "reason": "合规标记为 banned：涉及禁限售或功效宣称风险，直接淘汰"
+   },
+   {
+    "sku": "TRAVEL-008",
+    "name": "户外折叠椅",
+    "total": 0.0,
+    "demand": 17.0,
+    "gap": 14.0,
+    "profit": 0.0,
+    "logistics": 7.0,
+    "compliance": 10.0,
+    "content": 8.0,
+    "eliminated": true,
+    "reason": "贡献利润为负或为零，成本无法覆盖，直接淘汰"
+   },
+   {
+    "sku": "TRAVEL-010",
+    "name": "儿童退热贴",
+    "total": 0.0,
+    "demand": 21.0,
+    "gap": 10.0,
+    "profit": 0.0,
+    "logistics": 15.0,
+    "compliance": 5.0,
+    "content": 4.0,
+    "eliminated": true,
+    "reason": "贡献利润为负或为零，成本无法覆盖，直接淘汰"
+   }
+  ],
+  "standard": [
+   {
+    "sku": "TRAVEL-001",
+    "name": "旅行折叠收纳袋",
+    "total": 89.0,
+    "demand": 22.0,
+    "gap": 16.0,
+    "profit": 20.0,
+    "logistics": 13.0,
+    "compliance": 10.0,
+    "content": 8.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-003",
+    "name": "宠物伸缩牵引绳",
+    "total": 81.51,
+    "demand": 20.0,
+    "gap": 15.0,
+    "profit": 16.51,
+    "logistics": 13.0,
+    "compliance": 10.0,
+    "content": 7.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-009",
+    "name": "防水手机袋",
+    "total": 78.67,
+    "demand": 19.0,
+    "gap": 11.0,
+    "profit": 18.67,
+    "logistics": 15.0,
+    "compliance": 10.0,
+    "content": 5.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-002",
+    "name": "真空压缩收纳袋",
+    "total": 78.28,
+    "demand": 20.0,
+    "gap": 10.0,
+    "profit": 18.28,
+    "logistics": 14.0,
+    "compliance": 10.0,
+    "content": 6.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-005",
+    "name": "磁吸车载手机支架",
+    "total": 75.88,
+    "demand": 18.0,
+    "gap": 8.0,
+    "profit": 19.88,
+    "logistics": 14.0,
+    "compliance": 10.0,
+    "content": 6.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-007",
+    "name": "桌面收纳盒",
+    "total": 73.45,
+    "demand": 16.0,
+    "gap": 9.0,
+    "profit": 18.45,
+    "logistics": 13.0,
+    "compliance": 10.0,
+    "content": 7.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-004",
+    "name": "儿童安全座椅头枕",
+    "total": 64.13,
+    "demand": 15.0,
+    "gap": 12.0,
+    "profit": 18.13,
+    "logistics": 9.0,
+    "compliance": 5.0,
+    "content": 5.0,
+    "eliminated": false,
+    "reason": "合规标记为 review_needed：未淘汰，但需人工复核（如儿童/健康类目的功效表述）"
+   },
+   {
+    "sku": "TRAVEL-006",
+    "name": "美白牙贴",
+    "total": 0.0,
+    "demand": 24.0,
+    "gap": 18.0,
+    "profit": 0.0,
+    "logistics": 15.0,
+    "compliance": 0.0,
+    "content": 9.0,
+    "eliminated": true,
+    "reason": "合规标记为 banned：涉及禁限售或功效宣称风险，直接淘汰"
+   },
+   {
+    "sku": "TRAVEL-008",
+    "name": "户外折叠椅",
+    "total": 0.0,
+    "demand": 17.0,
+    "gap": 14.0,
+    "profit": 0.0,
+    "logistics": 7.0,
+    "compliance": 10.0,
+    "content": 8.0,
+    "eliminated": true,
+    "reason": "贡献利润为负或为零，成本无法覆盖，直接淘汰"
+   },
+   {
+    "sku": "TRAVEL-010",
+    "name": "儿童退热贴",
+    "total": 0.0,
+    "demand": 21.0,
+    "gap": 10.0,
+    "profit": 0.0,
+    "logistics": 15.0,
+    "compliance": 5.0,
+    "content": 4.0,
+    "eliminated": true,
+    "reason": "贡献利润为负或为零，成本无法覆盖，直接淘汰"
+   }
+  ],
+  "aggressive": [
+   {
+    "sku": "TRAVEL-001",
+    "name": "旅行折叠收纳袋",
+    "total": 89.0,
+    "demand": 22.0,
+    "gap": 16.0,
+    "profit": 20.0,
+    "logistics": 13.0,
+    "compliance": 10.0,
+    "content": 8.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-003",
+    "name": "宠物伸缩牵引绳",
+    "total": 81.51,
+    "demand": 20.0,
+    "gap": 15.0,
+    "profit": 16.51,
+    "logistics": 13.0,
+    "compliance": 10.0,
+    "content": 7.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-009",
+    "name": "防水手机袋",
+    "total": 78.67,
+    "demand": 19.0,
+    "gap": 11.0,
+    "profit": 18.67,
+    "logistics": 15.0,
+    "compliance": 10.0,
+    "content": 5.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-002",
+    "name": "真空压缩收纳袋",
+    "total": 78.28,
+    "demand": 20.0,
+    "gap": 10.0,
+    "profit": 18.28,
+    "logistics": 14.0,
+    "compliance": 10.0,
+    "content": 6.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-005",
+    "name": "磁吸车载手机支架",
+    "total": 75.88,
+    "demand": 18.0,
+    "gap": 8.0,
+    "profit": 19.88,
+    "logistics": 14.0,
+    "compliance": 10.0,
+    "content": 6.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-007",
+    "name": "桌面收纳盒",
+    "total": 73.45,
+    "demand": 16.0,
+    "gap": 9.0,
+    "profit": 18.45,
+    "logistics": 13.0,
+    "compliance": 10.0,
+    "content": 7.0,
+    "eliminated": false,
+    "reason": ""
+   },
+   {
+    "sku": "TRAVEL-004",
+    "name": "儿童安全座椅头枕",
+    "total": 64.13,
+    "demand": 15.0,
+    "gap": 12.0,
+    "profit": 18.13,
+    "logistics": 9.0,
+    "compliance": 5.0,
+    "content": 5.0,
+    "eliminated": false,
+    "reason": "合规标记为 review_needed：未淘汰，但需人工复核（如儿童/健康类目的功效表述）"
+   },
+   {
+    "sku": "TRAVEL-006",
+    "name": "美白牙贴",
+    "total": 0.0,
+    "demand": 24.0,
+    "gap": 18.0,
+    "profit": 0.0,
+    "logistics": 15.0,
+    "compliance": 0.0,
+    "content": 9.0,
+    "eliminated": true,
+    "reason": "合规标记为 banned：涉及禁限售或功效宣称风险，直接淘汰"
+   },
+   {
+    "sku": "TRAVEL-008",
+    "name": "户外折叠椅",
+    "total": 0.0,
+    "demand": 17.0,
+    "gap": 14.0,
+    "profit": 0.0,
+    "logistics": 7.0,
+    "compliance": 10.0,
+    "content": 8.0,
+    "eliminated": true,
+    "reason": "贡献利润为负或为零，成本无法覆盖，直接淘汰"
+   },
+   {
+    "sku": "TRAVEL-010",
+    "name": "儿童退热贴",
+    "total": 0.0,
+    "demand": 21.0,
+    "gap": 10.0,
+    "profit": 0.0,
+    "logistics": 15.0,
+    "compliance": 5.0,
+    "content": 4.0,
+    "eliminated": true,
+    "reason": "贡献利润为负或为零，成本无法覆盖，直接淘汰"
+   }
+  ]
+ },
+ "competitors_demo": [
+  {
+   "platform": "tiktok_shop",
+   "item_id": "TT-8841",
+   "title": "Travel Foldable Storage Bag",
+   "price": "10.99",
+   "rating": "4.6",
+   "review_count": "1855",
+   "promotion": "flash_sale_15pct",
+   "url": "https://example-shop.local/tt-8841"
+  },
+  {
+   "platform": "tiktok_shop",
+   "item_id": "TT-9012",
+   "title": "Compact Packing Cubes Set",
+   "price": "9.49",
+   "rating": "4.4",
+   "review_count": "940",
+   "promotion": "coupon_10pct",
+   "url": "https://example-shop.local/tt-9012"
+  },
+  {
+   "platform": "tiktok_shop",
+   "item_id": "TT-9188",
+   "title": "Mesh Travel Organizer Bag Set",
+   "price": "8.99",
+   "rating": "4.2",
+   "review_count": "140",
+   "promotion": "new_listing",
+   "url": "https://example-shop.local/tt-9188"
+  },
+  {
+   "platform": "amazon",
+   "item_id": "AZ-5521",
+   "title": "Foldable Travel Storage Organizer",
+   "price": "15.99",
+   "rating": "4.5",
+   "review_count": "4265",
+   "promotion": "none",
+   "url": "https://example-shop.local/az-5521"
+  },
+  {
+   "platform": "amazon",
+   "item_id": "AZ-5599",
+   "title": "Vacuum Compression Storage Bags",
+   "price": "11.99",
+   "rating": "4.4",
+   "review_count": "2915",
+   "promotion": "none",
+   "url": "https://example-shop.local/az-5599"
+  },
+  {
+   "platform": "independent_site",
+   "item_id": "SHP-0231",
+   "title": "Portable Travel Organizer Pouch",
+   "price": "17.50",
+   "rating": "4.7",
+   "review_count": "321",
+   "promotion": "none",
+   "url": "https://example-shop.local/shp-0231"
+  }
+ ],
+ "changes_demo": {
+  "warning": null,
+  "items": [
+   {
+    "item_id": "TT-8841",
+    "platform": "tiktok_shop",
+    "title": "Travel Foldable Storage Bag",
+    "type": "price_drop",
+    "detail": "价格 12.99 -> 10.99（-15.4%），当前促销：flash_sale_15pct"
+   },
+   {
+    "item_id": "TT-9188",
+    "platform": "tiktok_shop",
+    "title": "Mesh Travel Organizer Bag Set",
+    "type": "new_listing",
+    "detail": "新出现的竞品，售价 8.99，促销：new_listing"
+   },
+   {
+    "item_id": "AZ-5599",
+    "platform": "amazon",
+    "title": "Vacuum Compression Storage Bags",
+    "type": "promotion_change",
+    "detail": "促销从「lightning_deal」变为「none」，价格未变"
+   },
+   {
+    "item_id": "AZ-5599",
+    "platform": "amazon",
+    "title": "Vacuum Compression Storage Bags",
+    "type": "rating_change",
+    "detail": "评分 4.3 -> 4.4"
+   }
+  ]
+ },
+ "competitors_real": null,
+ "changes_real": null
+}
