@@ -969,11 +969,16 @@ function selfCheck(){
 }
 
 /* ───── Tab 切换 ───── */
-$("nav").addEventListener("click", e=>{
+$("nav").addEventListener("click", async e=>{
   const b = e.target.closest("button"); if (!b) return;
   [...$("nav").children].forEach(x=>x.setAttribute("aria-selected", x===b));
   ["scrape","comp","bench","src","score","calc","listing","watch","config","store","about"].forEach(t=>
     $("tab-"+t).classList.toggle("hide", t !== b.dataset.tab));
+  // 进入「④ 供应商比价」时重新拉一次候选品 —— products.csv 也可能被 CLI
+  // 或手工改动，不只有第③步会改它。
+  if (b.dataset.tab === "src"){
+    try{ await refreshSrcSkus(); renderQuotes(); }catch(err){}
+  }
 });
 
 /* ───── 启动 ───── */
@@ -1136,6 +1141,13 @@ async function benchSave(){
     await benchScore();
     // 主数据也刷新，让定价计算器和选品评分页跟着更新
     try{ const d = await api("/api/data"); D = d; renderScore(); initCalcPresets(); }catch(e){}
+    // ④ 供应商比价的候选品下拉也必须跟着刷新 —— 否则刚存的候选品在那边看不到
+    try{
+      const n = await refreshSrcSkus();
+      renderQuotes();
+      $("bh_save_status").innerHTML += `<br><span class="note">已同步到「④ 供应商比价」`
+        + `的候选品下拉（共 ${n} 个），可以直接去录报价。</span>`;
+    }catch(e){}
   }catch(e){ $("bh_save_status").textContent = "保存失败：" + e.message; }
 }
 
@@ -1205,6 +1217,28 @@ function renderSrcMode(){
   ["src_save","src_apply"].forEach(id=>{ if($(id)) $(id).disabled = !LOCAL; });
 }
 
+// 候选品下拉必须能被重新填充：第③步存了新候选品之后要立刻出现在这里，
+// 否则用户抓完数据、加完候选品，④ 里还是页面刚打开时那一批，只能手动刷新整页。
+async function refreshSrcSkus(){
+  const keep = $("src_sku").value;   // 尽量保住当前选中项
+  let rows = [];
+  if (LOCAL){
+    try{ rows = (await api("/api/products")).rows || []; }catch(e){ rows = []; }
+  } else {
+    rows = (D && D.products) ? D.products : [];
+  }
+  if (!rows.length){
+    $("src_sku").innerHTML = `<option value="">（还没有候选品）</option>`;
+    $("src_status").innerHTML = "还没有候选品 —— 先去 <strong>「③ 选品工作台」</strong>"
+      + "从抓到的竞品里挑几个加入候选并保存，这里才有东西可比价。";
+    return 0;
+  }
+  $("src_sku").innerHTML = rows.map(r=>
+    `<option value="${esc(r.sku)}">${esc(r.sku)} · ${esc(r.name)}</option>`).join("");
+  if (keep && rows.some(r=>r.sku === keep)) $("src_sku").value = keep;
+  return rows.length;
+}
+
 async function srcInit(){
   try{
     if (LOCAL){
@@ -1212,15 +1246,12 @@ async function srcInit(){
       SRC.quotes = d.rows || [];
       SRC.platforms = d.platforms || [];
       $("src_vat").value = d.vat_rate;
-      const p = await api("/api/products");
-      $("src_sku").innerHTML = (p.rows||[]).map(r=>
-        `<option value="${esc(r.sku)}">${esc(r.sku)} · ${esc(r.name)}</option>`).join("");
+      await refreshSrcSkus();
     } else {
       SRC.platforms = ["1688","义乌购","阿里巴巴国际站","中国制造网","DHgate",
                        "拼多多","淘宝","速卖通","线下档口","展会","工厂直联","其他"];
       SRC.quotes = [];
-      $("src_sku").innerHTML = (D && D.products ? D.products : []).map(p=>
-        `<option value="${esc(p.sku)}">${esc(p.sku)} · ${esc(p.name)}</option>`).join("");
+      await refreshSrcSkus();
       if (!SRC.quotes.length) srcSeedDemo();
     }
     renderQuotes();

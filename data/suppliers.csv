@@ -1,7 +1,1 @@
-sku,platform,supplier,unit_price,moq,tax_included,freight_included,domestic_freight,sample_fee,mold_fee,lead_days,tiers,url,quoted_date,notes
-TRAVEL-001,1688,义乌收纳厂,12.5,1000,0,0,2600,0,800,18,1000:12.5;3000:11.2;10000:10.4,,2026-09-12,示例报价（非真实供应商）
-TRAVEL-001,1688,深圳贸易商,16.0,100,1,0,180,0,0,5,,,2026-09-12,示例报价（非真实供应商）
-TRAVEL-001,义乌购,福田市场档口,14.5,200,0,1,0,0,0,3,,,2026-09-12,示例报价（非真实供应商）
-TRAVEL-001,阿里巴巴国际站,Ningbo Home Co,19.0,50,1,1,0,150,0,25,,,2026-09-12,示例报价（非真实供应商）
-TRAVEL-003,1688,宠具工厂,18.5,1000,0,0,2600,0,800,18,1000:18.5;3000:16.8,,2026-09-12,示例报价（非真实供应商）
-TRAVEL-003,义乌购,宠具档口,21.0,200,0,1,0,0,0,3,,,2026-09-12,示例报价（非真实供应商）
+﻿sku,platform,supplier,unit_price,moq,tier_qty,tier_price,tax_included,freight_included,domestic_freight,sample_fee,mold_fee,lead_days,quoted_date,url,notes
