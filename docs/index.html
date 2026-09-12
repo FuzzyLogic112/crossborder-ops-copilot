@@ -1112,12 +1112,23 @@ async function benchLoadSnap(){
     const r = await api("/api/snapshot-rows", {snapshot: $("bh_snap").value});
     BENCH.snapRows = r.rows || [];
     $("bh_status").innerHTML = `已加载 <strong>${r.count}</strong> 行真实竞品数据。勾选你想做的品。`;
+    const nHeavy = BENCH.snapRows.filter(c=>c._heavy).length;
+    if (nHeavy) $("bh_status").innerHTML +=
+      `<br><strong style="color:var(--warn)">⚠ 其中 ${nHeavy} 个是重货（≥2kg）</strong>，`
+      + `表里标了「重货」。跨境头程按公斤计费，重货运费经常吃掉全部利润 —— 优先挑轻的。`;
     let h = `<thead><tr><th style="width:34px"></th><th class="num">排名</th><th>ASIN</th>
-      <th>标题</th><th class="num">售价</th><th class="num">评分</th><th class="num">评价数</th></tr></thead><tbody>`;
+      <th>品类</th><th>标题</th><th>规格</th><th class="num">售价</th>
+      <th class="num">评分</th><th class="num">评价数</th></tr></thead><tbody>`;
     BENCH.snapRows.forEach((c,i)=>{
+      const spec = c._spec
+        ? (c._heavy ? `<span style="color:var(--warn)"><strong>${esc(c._spec)}</strong> 重货</span>`
+                    : esc(c._spec))
+        : '<span class="note">—</span>';
       h += `<tr><td><input type="checkbox" class="bh_ck" data-i="${i}" style="width:auto"></td>
         <td class="num">${esc(c.rank||"—")}</td><td>${esc(c.item_id)}</td>
+        <td>${c._zh ? `<strong>${esc(c._zh)}</strong>` : '<span class="note">—</span>'}</td>
         <td class="ttl">${esc(c.title)}</td>
+        <td>${spec}</td>
         <td class="num">${Number(c.price).toFixed(2)}</td>
         <td class="num">${esc(c.rating)}</td>
         <td class="num">${Number(c.review_count||0).toLocaleString()}</td></tr>`;
@@ -1193,19 +1204,39 @@ function renderEdit(){
 }
 
 function benchFillDemo(){
-  // 只用于快速试跑流程：给空字段填一组占位数值
+  // 只用于快速试跑流程：给空字段填一组占位数值。
+  //
+  // ⚠️ 重量是这里最危险的一个字段。以前无脑填 0.5kg，结果 40 磅（18kg）的猫砂
+  // 被按 0.5kg 算物流费（¥375 → ¥25），评分显示「通过」——
+  // 但按真实重量它是必然亏损的。现在优先用标题里解析出来的真实重量。
+  let guessedWeight = 0, parsedWeight = 0, heavy = [];
   BENCH.editRows.forEach(r=>{
     const p = parseFloat(r.planned_price) || 20;
     if (r.cost_price === "" || r.cost_price == null) r.cost_price = (p * 0.28).toFixed(2);
     if (r.packaging_cost === "" || r.packaging_cost == null) r.packaging_cost = "1.5";
-    if (r.weight_kg === "" || r.weight_kg == null) r.weight_kg = "0.5";
+    if (r.weight_kg === "" || r.weight_kg == null){
+      const fromTitle = parseFloat(r._weight_from_title);
+      if (fromTitle > 0){ r.weight_kg = String(fromTitle); parsedWeight++;
+                          if (fromTitle >= 2) heavy.push(r.sku); }
+      else { r.weight_kg = "0.5"; guessedWeight++; }
+    }
     if (r.volume_l === "" || r.volume_l == null) r.volume_l = "2";
     [["demand_score",18],["gap_score",12],["logistics_score",12],["content_score",6]]
       .forEach(([k,v])=>{ if (r[k] === "" || r[k] == null) r[k] = String(v); });
   });
   renderEdit();
-  $("bh_save_status").innerHTML = "<strong>已填入示例数值 —— 这些不是真实报价</strong>，"
-    + "只为让你先把流程跑通。真做决策前必须换成供应商实际报价。";
+
+  let msg = "<strong>已填入示例数值 —— 这些不是真实数据</strong>，只为让你先把流程跑通。";
+  if (parsedWeight) msg += `<br>其中 <strong>${parsedWeight}</strong> 个品的重量是`
+    + `<strong>从标题里解析出来的真实值</strong>（比如 <code>40 lb</code> → 18.1kg），`
+    + `比瞎填靠谱，但仍需核实 —— 标题里的 oz 有时是容量不是重量。`;
+  if (guessedWeight) msg += `<br><strong style="color:var(--warn)">⚠ 有 ${guessedWeight} 个品`
+    + `的重量解析不出来，被填成占位值 0.5kg。</strong>重量直接决定物流费，`
+    + `<strong>不改成真实值，评分结果不作数。</strong>`;
+  if (heavy.length) msg += `<br><strong style="color:var(--warn)">⚠ 重货预警：`
+    + `${esc(heavy.join("、"))} 超过 2kg。</strong>跨境头程按公斤计费，`
+    + `重货的运费经常吃掉全部利润空间 —— 先去「⑥ 定价计算器」看看保本价是多少。`;
+  $("bh_save_status").innerHTML = msg;
 }
 
 async function benchSave(){

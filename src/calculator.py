@@ -21,24 +21,57 @@ COMPLIANCE_SCORE_MAP = {
 }
 
 
+# 留空时必须判「无法测算」而不是当 0 的字段。
+# 采购价留空当 0 → 商品看起来免费 → 利润爆表 → 评分「通过」，是致命假信号。
+COST_CRITICAL_FIELDS = ("cost_price", "packaging_cost", "weight_kg", "planned_price")
+
+
 def load_products(csv_path: str) -> List[Product]:
+    """读候选品。空的数字字段记进 missing_fields，不让它炸也不当成 0。
+
+    为什么要容忍空值：选品工作台的流程就是「先加候选品，采购价留空，
+    等第④步比完价再回填」。以前 float("") 直接抛 ValueError，
+    会让 /api/data 返回 500，面板 boot() 整个中断——界面看着正常但按钮全失灵。
+    """
+    def num(row, key, missing):
+        raw = (row.get(key) or "").strip() if isinstance(row.get(key), str) else row.get(key)
+        if raw in (None, ""):
+            missing.append(key)
+            return 0.0
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            missing.append(key)
+            return 0.0
+
     products = []
     with open(csv_path, encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
+            missing = []
+            planned_raw = (row.get("planned_price") or "")
+            planned = None
+            if str(planned_raw).strip():
+                try:
+                    planned = float(planned_raw)
+                except (TypeError, ValueError):
+                    missing.append("planned_price")
+            else:
+                missing.append("planned_price")
             products.append(Product(
                 sku=row["sku"],
                 name=row["name"],
                 category=row["category"],
-                cost_price=float(row["cost_price"]),
-                packaging_cost=float(row["packaging_cost"]),
-                weight_kg=float(row["weight_kg"]),
-                volume_l=float(row["volume_l"]),
+                cost_price=num(row, "cost_price", missing),
+                packaging_cost=num(row, "packaging_cost", missing),
+                weight_kg=num(row, "weight_kg", missing),
+                volume_l=num(row, "volume_l", missing),
                 compliance_flag=row["compliance_flag"],
-                demand_score=float(row["demand_score"]),
-                gap_score=float(row["gap_score"]),
-                logistics_score=float(row["logistics_score"]),
-                content_score=float(row["content_score"]),
-                planned_price=float(row["planned_price"]) if row.get("planned_price") else None,
+                demand_score=num(row, "demand_score", missing),
+                gap_score=num(row, "gap_score", missing),
+                logistics_score=num(row, "logistics_score", missing),
+                content_score=num(row, "content_score", missing),
+                planned_price=planned,
+                missing_fields=missing,
             ))
     return products
 
@@ -144,6 +177,23 @@ def score_product(
             profit_score=0.0, logistics_score=product.logistics_score,
             compliance_score=0.0, content_score=product.content_score,
             eliminated=True, eliminate_reason="合规标记为 banned：涉及禁限售或功效宣称风险，直接淘汰",
+        )
+
+    # 缺关键字段时判「无法测算」，不给分。
+    # 绝不能把空值当 0 —— 采购价当 0 会让商品看起来免费、利润爆表、评分通过，
+    # 那是比没有分数危险得多的假信号。
+    blocking = [f for f in COST_CRITICAL_FIELDS if f in (product.missing_fields or [])]
+    if blocking:
+        names = {"cost_price": "采购价", "packaging_cost": "包装成本",
+                 "weight_kg": "计费重量", "planned_price": "计划售价"}
+        return ScoreResult(
+            sku=product.sku, name=product.name, total_score=0.0,
+            demand_score=product.demand_score, gap_score=product.gap_score,
+            profit_score=0.0, logistics_score=product.logistics_score,
+            compliance_score=0.0, content_score=product.content_score,
+            eliminated=True,
+            eliminate_reason="无法测算：缺少 %s。补齐后才会有真实分数（采购价可在「④ 供应商比价」比完后自动回填）"
+                             % "、".join(names.get(f, f) for f in blocking),
         )
 
     try:

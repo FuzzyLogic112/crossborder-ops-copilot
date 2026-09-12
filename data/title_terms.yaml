@@ -1,0 +1,118 @@
+# 竞品标题的中文品类提示词典
+#
+# ⚠️ 这是**提示，不是翻译**。只认词典里有的词，认不出就不显示，绝不瞎猜。
+#    要完整的中文标题，用面板「② 竞品数据」里的「生成翻译 Prompt」按钮，
+#    粘到你自己的 AI 对话框跑 —— 本项目不调用任何 LLM。
+#
+# 格式：英文关键词: 中文
+#   匹配不区分大小写，命中**最长**的词条（所以 "cat litter" 会优先于 "cat"）。
+#   想加就直接加一行，面板立刻生效，不用改代码。
+
+# ── 宠物 ──
+cat litter: 猫砂
+litter box: 猫砂盆
+dog treats: 狗零食
+cat treats: 猫零食
+dog food: 狗粮
+cat food: 猫粮
+dog leash: 狗牵引绳
+dog collar: 狗项圈
+dog harness: 狗胸背带
+poop bags: 拾便袋
+pee pads: 宠物尿垫
+pet bed: 宠物窝
+litter: 猫砂
+leash: 牵引绳
+
+# ── 家居厨房 ──
+water bottle: 水杯
+tumbler: 保温杯
+coffee maker: 咖啡机
+air fryer: 空气炸锅
+slow cooker: 慢炖锅
+kitchen scale: 厨房秤
+cutting board: 砧板
+food storage: 食物保鲜盒
+vacuum sealer: 真空封口机
+baking sheet: 烤盘
+parchment paper: 烘焙纸
+salad spinner: 蔬菜脱水器
+meat thermometer: 食物温度计
+toaster: 烤面包机
+blender: 搅拌机
+storage bags: 收纳袋
+trash bags: 垃圾袋
+paper towels: 厨房纸
+
+# ── 办公文具 ──
+copy paper: 复印纸
+printer paper: 打印纸
+permanent markers: 记号笔
+gel pens: 中性笔
+ballpoint: 圆珠笔
+sticky notes: 便利贴
+notebook: 笔记本
+stapler: 订书机
+binder: 活页夹
+label maker: 标签打印机
+
+# ── 电子配件 ──
+phone case: 手机壳
+screen protector: 屏幕保护膜
+charging cable: 充电线
+wall charger: 充电头
+power bank: 充电宝
+earbuds: 无线耳机
+headphones: 耳机
+mouse pad: 鼠标垫
+keyboard: 键盘
+webcam: 摄像头
+hdmi cable: HDMI 线
+usb hub: USB 集线器
+car mount: 车载支架
+phone holder: 手机支架
+
+# ── 美妆个护 ──
+face mask: 面膜
+sunscreen: 防晒霜
+moisturizer: 保湿霜
+shampoo: 洗发水
+conditioner: 护发素
+body wash: 沐浴露
+lip balm: 润唇膏
+nail clippers: 指甲刀
+hair dryer: 吹风机
+electric toothbrush: 电动牙刷
+whitening strips: 美白牙贴
+
+# ── 母婴 ──
+diapers: 纸尿裤
+baby wipes: 婴儿湿巾
+bottle warmer: 温奶器
+pacifier: 安抚奶嘴
+stroller: 婴儿车
+car seat: 安全座椅
+
+# ── 运动户外 ──
+yoga mat: 瑜伽垫
+resistance bands: 阻力带
+dumbbell: 哑铃
+jump rope: 跳绳
+water shoes: 涉水鞋
+camping chair: 折叠椅
+sleeping bag: 睡袋
+backpack: 背包
+
+# ── 工具家装 ──
+screwdriver: 螺丝刀
+tape measure: 卷尺
+flashlight: 手电筒
+tool set: 工具套装
+duct tape: 强力胶带
+light bulbs: 灯泡
+extension cord: 延长线
+
+# ── 通用后缀（放最后，避免盖过更具体的词条）──
+organizer: 收纳
+cleaner: 清洁剂
+refill: 补充装

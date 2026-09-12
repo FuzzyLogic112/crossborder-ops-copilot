@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """数据模型：Product / ScoreResult / ProfitResult"""
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List
 
 
 # 硬性淘汰的合规标记 —— 出现即直接淘汰，不参与总分计算
@@ -27,6 +27,11 @@ class Product:
     planned_price: Optional[float] = field(default=None)  # 计划售价（参考竞品定价），用于算真实利润分
     # 贡献利润分（满分20）由 ProfitCalculator 算出后回填，不在原始数据里
     profit_score: Optional[float] = field(default=None)
+    # CSV 里留空的数字字段。**不能当成 0** —— 采购价留空当 0，商品会显示成
+    # 「免费」从而利润爆表、评分通过，是假信号。所以记下来，评分时直接判无法测算。
+    # 选品工作台的流程本来就要求采购价先留空（等第④步比价后回填），
+    # 所以这是正常状态，不是坏数据。
+    missing_fields: List[str] = field(default_factory=list)
 
 
 @dataclass

@@ -72,3 +72,59 @@ def test_api_products_empty_but_well_formed(empty_data):
     r = serve.api_products_get()
     assert r["rows"] == []
     assert r["columns"]                         # 列定义还在，否则前端渲染不出表头
+
+
+# ── 候选品字段留空（选品工作台的正常中间状态）──
+
+def _write_products(path, **overrides):
+    import csv as _csv
+    row = dict(sku="X1", name="Test Product", category="pet-supplies",
+               cost_price="18", packaging_cost="2", weight_kg="0.4", volume_l="1",
+               compliance_flag="ok", demand_score="20", gap_score="12",
+               logistics_score="12", content_score="6", planned_price="120")
+    row.update(overrides)
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
+        w = _csv.DictWriter(f, fieldnames=serve.PRODUCT_COLUMNS)
+        w.writeheader()
+        w.writerow(row)
+
+
+def test_load_products_tolerates_blank_numbers(tmp_path):
+    """③ 选品工作台的流程就是「采购价先留空，等④比完价回填」。
+    以前 float("") 直接抛 ValueError → api_data 500 → 面板 boot 中断，
+    界面看着正常但所有按钮失灵。"""
+    from src.calculator import load_products
+    f = tmp_path / "products.csv"
+    _write_products(f, cost_price="", weight_kg="")
+    ps = load_products(str(f))
+    assert len(ps) == 1
+    assert set(ps[0].missing_fields) >= {"cost_price", "weight_kg"}
+
+
+def test_blank_cost_is_not_treated_as_free(tmp_path):
+    """采购价留空绝不能当 0 —— 那会让商品看起来免费、利润爆表、评分「通过」，
+    比没有分数危险得多。必须判「无法测算」。"""
+    from src.calculator import load_products, load_yaml, score_product
+    f = tmp_path / "products.csv"
+    _write_products(f, cost_price="")
+    p = load_products(str(f))[0]
+    pc = load_yaml(str(serve.DATA / "platforms.yaml"))
+    lc = load_yaml(str(serve.DATA / "logistics_rates.yaml"))
+    r = score_product(p, pc, lc)
+    assert r.eliminated is True
+    assert r.total_score == 0.0
+    assert "无法测算" in r.eliminate_reason
+    assert "采购价" in r.eliminate_reason
+
+
+def test_complete_product_still_scores_normally(tmp_path):
+    """补齐之后必须恢复正常打分，不能被上面的守卫误伤。"""
+    from src.calculator import load_products, load_yaml, score_product
+    f = tmp_path / "products.csv"
+    _write_products(f)
+    p = load_products(str(f))[0]
+    pc = load_yaml(str(serve.DATA / "platforms.yaml"))
+    lc = load_yaml(str(serve.DATA / "logistics_rates.yaml"))
+    r = score_product(p, pc, lc)
+    assert r.eliminated is False
+    assert r.total_score > 0

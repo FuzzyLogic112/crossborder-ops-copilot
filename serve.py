@@ -36,6 +36,7 @@ sys.path.insert(0, str(BASE))
 from src.calculator import load_products, load_yaml, score_all, calculate_unit_profit  # noqa: E402
 from src.monitor import compare_snapshots                                              # noqa: E402
 from src.ingest import ingest_csv, query_snapshot_dates                                # noqa: E402
+from src.titleparse import describe as describe_title                          # noqa: E402
 from src.sourcing import (SupplierQuote, compare_quotes, compare_summary,      # noqa: E402
                           load_quotes, save_quotes, KNOWN_PLATFORMS,
                           DEFAULT_VAT_RATE, QUOTE_COLUMNS, _parse_tiers, _as_bool, _as_float)
@@ -605,15 +606,24 @@ def api_candidates_from_snapshot(body):
             local_price = None
         # 对标竞品定价作为起点，但换算成人民币后才能和成本比较
         planned = round(local_price * fx, 2) if local_price is not None else ""
+        info = describe_title(r.get("title") or "")
         out.append({
             "sku": iid,
             "name": (r.get("title") or "")[:60],
             "category": category,
             "compliance_flag": "ok",
             "planned_price": planned,
-            "cost_price": "", "packaging_cost": "", "weight_kg": "", "volume_l": "",
+            # 重量从标题里解析（`Cat Litter 40 lb` -> 18.1kg）。
+            # 以前留空，用户点「填入示例数值」会被填成 0.5kg——
+            # 40 磅的猫砂因此显示「评分通过」，而按真实重量是必然亏损的。
+            # 解析值只是**起点，仍需核实**：标题里的 oz 可能是容量不是重量。
+            "cost_price": "", "packaging_cost": "",
+            "weight_kg": (info["weight_kg"] if info["weight_kg"] is not None else ""),
+            "volume_l": "",
             "demand_score": "", "gap_score": "", "logistics_score": "", "content_score": "",
             "_local_price": local_price, "_currency": currency, "_fx_rate": fx,
+            "_zh": info["zh"], "_spec": info["spec"], "_heavy": info["heavy"],
+            "_weight_from_title": info["weight_kg"],
             "_ref_rating": r.get("rating"), "_ref_reviews": r.get("review_count"),
             "_ref_rank": r.get("rank"),
         })
@@ -635,7 +645,17 @@ def api_snapshot_rows(body):
     if not p or BASE not in p.parents or not p.exists():
         raise ValueError("快照不存在或路径越界：%s" % path)
     rows = list(_csv.DictReader(p.open(encoding="utf-8-sig")))
-    return {"snapshot": path, "count": len(rows), "rows": rows}
+    # 给每行补中文品类提示与规格（重量/件数）。
+    # 重量尤其重要：跨境成本模型里它权重很大，而它就写在标题里
+    # （`Cat Litter 40 lb` = 18.1kg），以前完全没被用上。
+    for r in rows:
+        info = describe_title(r.get("title") or "")
+        r["_zh"] = info["zh"]
+        r["_spec"] = info["spec"]
+        r["_heavy"] = info["heavy"]
+        r["_weight_from_title"] = info["weight_kg"]
+    return {"snapshot": path, "count": len(rows), "rows": rows,
+            "heavy_kg": __import__("src.titleparse", fromlist=["HEAVY_KG"]).HEAVY_KG}
 
 
 # ── 供应商报价与比价 ──
