@@ -17,6 +17,7 @@
 | 文档 | 内容 |
 |---|---|
 | [`USAGE.md`](USAGE.md) | ⭐ **推荐先看**。跑通全链路的完整参考：8 步流程、所有参数、公式、数据可靠性分级、FAQ |
+| [`skills/README.md`](skills/README.md) | 4 个运营 SOP：选品初筛 / 跟价决策 / Listing 文案 / 产品图。**不用装工具也能直接粘进 AI 对话框用** |
 
 ## 在线演示与完整功能的区别
 
@@ -126,9 +127,10 @@ crossborder-ops-copilot/
   data/              样例数据、平台费率配置、历史快照数据库
   src/               评分器、利润计算器、竞品监控、数据导入
   adapters/          抓取数据源适配层（amzrank -> 标准竞品快照格式）
-  skills/listing/    Listing 生成三层 Prompt 架构（决策/执行/质检）
+  skills/            4 个运营 SOP（选品初筛 / 跟价决策 / Listing / 产品图），见 skills/README.md
   reports/           score-products 和 monitor 命令生成的报告
-  tests/             37 个单元测试，覆盖计算逻辑、硬性淘汰、数据导入、MCP 工具、抓取适配层
+  tests/             123 个单元测试，覆盖计算逻辑、硬性淘汰、数据导入、MCP 工具、
+                     抓取适配层、标题解析、空环境启动
   cli.py             命令行入口
 ```
 
