@@ -339,6 +339,51 @@
     </div>
     <div class="tblwrap"><table id="src_tbl"></table></div>
     <p class="note" id="src_status"></p>
+
+    <details style="margin-top:14px">
+      <summary style="cursor:pointer;font-weight:600">每一列填什么（不确定就点开）</summary>
+      <div class="note" style="margin-top:10px">
+        <p><strong>这些数不是你估的，是去 1688 / 阿里巴巴问供应商拿的。</strong>
+        打开商品页，或者点「聊天」问店家，把他给的数原样抄进来。
+        <strong>至少录两三家才有比价的意义</strong>——只录一家，算出来还是那一家。</p>
+
+        <table style="width:100%;margin:10px 0">
+          <thead><tr><th>列</th><th>填什么</th><th>不知道就填</th></tr></thead>
+          <tbody>
+          <tr><td><strong>平台</strong></td><td>报价从哪来的（1688 / 义乌购 / 线下档口…）</td><td>照实选</td></tr>
+          <tr><td><strong>供应商</strong></td><td><strong>店铺名或工厂名</strong>，用来区分是哪一家。<br>
+            例：<code>义乌某某日用品厂</code>、<code>1688-旺铺A</code></td><td>随便写个能认出来的代号</td></tr>
+          <tr><td><strong>标价¥</strong></td><td>商品页上挂的单价（人民币/件）</td><td>——必填</td></tr>
+          <tr><td><strong>MOQ</strong></td><td>最小起订量。商品页写「10 件起批」就填 <code>10</code></td><td><code>1</code></td></tr>
+          <tr><td><strong>阶梯价</strong></td><td>买越多越便宜的那张表。格式
+            <code>数量:单价</code>，多档用 <code>;</code> 隔开：<br>
+            <code>100:42.5;500:38;1000:35</code></td><td>留空（没有阶梯就按标价算）</td></tr>
+          <tr><td><strong>含税</strong></td><td>报价是否已含增值税。<strong>1688 大多数标价是不含税的</strong>，
+            要专票得另加 13%。不确定就<strong>问店家「这个价含不含票」</strong></td><td>不勾（当作不含税，成本算高一点更安全）</td></tr>
+          <tr><td><strong>含运</strong></td><td>是否包邮到你手里</td><td>不勾</td></tr>
+          <tr><td><strong>国内运费¥</strong></td><td>这一整批货的运费<strong>总额</strong>，不是每件的。
+            系统会自己除以件数</td><td><code>0</code>，但记得回头补</td></tr>
+          <tr><td><strong>打样费¥</strong></td><td>寄样品收的钱。一次性费用，会摊到每件上</td><td><code>0</code></td></tr>
+          <tr><td><strong>模具费¥</strong></td><td>开模费。定制品才有，现货一般是 0</td><td><code>0</code></td></tr>
+          <tr><td><strong>交期天</strong></td><td>下单到发货要几天。超过 20 天会提示断货风险</td><td>留空</td></tr>
+          <tr><td><strong>报价日期</strong></td><td>店家给你报价那天。<strong>留空会被警告</strong>——
+            报价会变，没日期的报价不能当决策依据</td><td>今天的日期</td></tr>
+          </tbody>
+        </table>
+
+        <div class="cap">
+          <strong>两个常填错的地方：</strong><br>
+          ① <strong>「供应商」填的是店名，不是快递方式。</strong>填「平邮」「顺丰」是不对的——
+          那属于运费信息，该体现在「含运」和「国内运费」两列。<br>
+          ② <strong>「国内运费」填总额不填单件。</strong>店家说「运费 300」，就填 300，
+          别自己先除以件数——系统会按实际采购量摊。
+        </div>
+
+        <p style="margin-top:10px"><strong>填不全也能先比。</strong>
+        不确定的留默认值先跑一遍，看看差距有多大，再决定值不值得回头问店家要准数。
+        每条报价缺什么，比价结果里都会单独提示。</p>
+      </div>
+    </details>
   </div>
 
   <div class="card">
@@ -1274,6 +1319,9 @@ async function refreshSrcSkus(){
   $("src_sku").innerHTML = rows.map(r=>
     `<option value="${esc(r.sku)}">${esc(r.sku)} · ${esc(r.name)}</option>`).join("");
   if (keep && rows.some(r=>r.sku === keep)) $("src_sku").value = keep;
+  // 必须清掉空状态提示 —— 否则加了候选品之后，下拉里明明有东西，
+  // 底下还挂着「还没有候选品，先去③」，看起来像是没生效。
+  $("src_status").textContent = "";
   return rows.length;
 }
 
