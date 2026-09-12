@@ -57,6 +57,70 @@
    "return_rate": {
     "default": 0.05
    }
+  },
+  "ebay": {
+   "commission_rate": 0.108,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.08,
+    "electronics_accessory": 0.12
+   }
+  },
+  "walmart": {
+   "commission_rate": 0.12,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.09
+   }
+  },
+  "walmart_low_fee": {
+   "commission_rate": 0.06,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.1
+   }
+  },
+  "etsy": {
+   "commission_rate": 0.065,
+   "payment_fee_rate": 0.03,
+   "return_rate": {
+    "default": 0.06
+   }
+  },
+  "temu": {
+   "commission_rate": 0.035,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.1
+   }
+  },
+  "shopee_local": {
+   "commission_rate": 0.05,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.07
+   }
+  },
+  "shopee_crossborder_sg": {
+   "commission_rate": 0.19,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.07
+   }
+  },
+  "shopee_crossborder_my": {
+   "commission_rate": 0.234,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.07
+   }
+  },
+  "lazada": {
+   "commission_rate": 0.05,
+   "payment_fee_rate": 0.0,
+   "return_rate": {
+    "default": 0.07
+   }
   }
  },
  "logistics": {
@@ -71,6 +135,34 @@
   "SEA": {
    "base_fee": 8,
    "rate_per_kg": 12
+  },
+  "UK": {
+   "base_fee": 17,
+   "rate_per_kg": 23
+  },
+  "JP": {
+   "base_fee": 12,
+   "rate_per_kg": 16
+  },
+  "CA": {
+   "base_fee": 18,
+   "rate_per_kg": 25
+  },
+  "AU": {
+   "base_fee": 20,
+   "rate_per_kg": 28
+  },
+  "MX": {
+   "base_fee": 22,
+   "rate_per_kg": 32
+  },
+  "BR": {
+   "base_fee": 28,
+   "rate_per_kg": 40
+  },
+  "ME": {
+   "base_fee": 19,
+   "rate_per_kg": 26
   }
  },
  "margin_scenarios": {

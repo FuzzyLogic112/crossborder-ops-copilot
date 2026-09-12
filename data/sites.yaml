@@ -1,0 +1,66 @@
+# 抓取站点配置 —— 可自由增删，不需要改代码
+#
+# 每个站点需要：
+#   domain      站点域名
+#   currency    当地货币代码
+#   verified    是否实测抓取成功过（面板会标 ✓）
+#   note        备注
+#
+# 加新站点：直接在下面照格式加一段。面板下拉会自动出现。
+# ⚠️ 加了之后抓取工具（amzrank）也要支持该站点，否则会报「页面没有榜单元素」。
+#    verified: false 的站点属于未验证，第一次用要做好失败的准备。
+
+us:
+  domain: www.amazon.com
+  currency: USD
+  verified: true
+  note: 实测可用。已验证类目 pet-supplies / toys-and-games / office-products
+jp:
+  domain: www.amazon.co.jp
+  currency: JPY
+  verified: false
+  note: 抓取工具已内置该站配置，但未实测
+uk:
+  domain: www.amazon.co.uk
+  currency: GBP
+  verified: false
+  note: 抓取工具已内置该站配置，但未实测
+de:
+  domain: www.amazon.de
+  currency: EUR
+  verified: false
+  note: 抓取工具已内置该站配置，但未实测
+
+# ── 以下站点需要先在抓取工具里补配置才能用 ──
+# 保留在这里是为了说明「怎么扩」，不是说现在就能抓。
+# 要启用：① 在 amzrank.py 的 SITES 里加对应条目 ② 把 enabled 改成 true
+fr:
+  domain: www.amazon.fr
+  currency: EUR
+  verified: false
+  enabled: false
+  note: 需先在抓取工具 SITES 里补配置
+it:
+  domain: www.amazon.it
+  currency: EUR
+  verified: false
+  enabled: false
+  note: 需先在抓取工具 SITES 里补配置
+es:
+  domain: www.amazon.es
+  currency: EUR
+  verified: false
+  enabled: false
+  note: 需先在抓取工具 SITES 里补配置
+ca:
+  domain: www.amazon.ca
+  currency: CAD
+  verified: false
+  enabled: false
+  note: 需先在抓取工具 SITES 里补配置
+au:
+  domain: www.amazon.com.au
+  currency: AUD
+  verified: false
+  enabled: false
+  note: 需先在抓取工具 SITES 里补配置

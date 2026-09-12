@@ -45,16 +45,26 @@ from src.sourcing import (SupplierQuote, compare_quotes, compare_summary,      #
 # 所以不做硬编码白名单——那会给面板塞一堆用不了的选项。
 # 改为「安全格式校验」：只允许小写字母数字与连字符，长度受限。
 # 这样既能用你在榜单页地址栏看到的真实 slug，又不会变成任意 URL 代理。
-ALLOWED_SITES = {"us", "jp", "de", "uk"}
 SLUG_RE = __import__("re").compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
 
-# 实测可用的 slug（面板会标「已验证」）。未列出的不代表不能用，只是没验过。
+
+def load_sites():
+    """站点清单从 data/sites.yaml 读，不再硬编码 —— 用户可自由增删。"""
+    f = DATA / "sites.yaml"
+    if not f.exists():
+        return {"us": {"domain": "www.amazon.com", "currency": "USD", "verified": True}}
+    return load_yaml(str(f)) or {}
+
+
+def enabled_sites():
+    """enabled 显式为 false 的站点不出现在下拉里（那些需要先改抓取工具配置）。"""
+    return {k: v for k, v in load_sites().items()
+            if (v or {}).get("enabled", True) is not False}
+
+
+# 实测抓取成功过的类目 slug。面板会标「已验证」；未列出不代表不能用，只是没验过。
 VERIFIED_CATEGORIES = {
-    # 实测抓取成功过的 slug（2026-09-12 验证）
-    "us": ["pet-supplies", "toys-and-games"],
-    "jp": [],
-    "de": [],
-    "uk": [],
+    "us": ["pet-supplies", "toys-and-games", "office-products"],
 }
 # 常见候选，面板作为下拉建议给出，标「未验证」
 CANDIDATE_CATEGORIES = [
@@ -94,7 +104,9 @@ def api_health():
             "profit": True,
         },
         "amzrank_path": str(amzrank) if amzrank else None,
-        "allowed_sites": sorted(ALLOWED_SITES),
+        "sites": enabled_sites(),
+        "all_sites": load_sites(),
+        "allowed_sites": sorted(enabled_sites().keys()),
         "verified_categories": VERIFIED_CATEGORIES,
         "candidate_categories": CANDIDATE_CATEGORIES,
         "slug_hint": "类目 slug 各站不同。抓不到时去目标站榜单页，看地址栏 /gp/bestsellers/<这一段>/ 的真实值",
@@ -291,8 +303,11 @@ def api_scrape(body):
     pages = int(body.get("pages", 1))
     delay = float(body.get("delay", MIN_DELAY))
 
-    if site not in ALLOWED_SITES:
-        raise ValueError("站点不在白名单内：%s" % site)
+    sites = enabled_sites()
+    if site not in sites:
+        raise ValueError("站点 %s 未启用。可用：%s。"
+                         "要加新站点，编辑 data/sites.yaml（并确认抓取工具支持该站）"
+                         % (site, ", ".join(sorted(sites))))
     if not SLUG_RE.match(category):
         raise ValueError("类目 slug 格式不合法（只允许小写字母、数字、连字符）：%s" % category)
     pages = max(1, min(MAX_PAGES, pages))
@@ -667,6 +682,78 @@ def api_apply_cost(body):
             "note": "已写入采购价。到「选品工作台」第③步或「选品评分」页看重算后的结果。"}
 
 
+# ── 配置读写（平台费率 / 物流市场 / 抓取站点）──
+# 这三类清单原来硬编码在代码里，导致「不能自定义」。现在全部落在 data/*.yaml，
+# 并通过下面的接口让面板直接编辑，不需要动代码。
+
+CONFIG_FILES = {
+    "platforms": ("platforms.yaml", "平台佣金与支付费率"),
+    "logistics": ("logistics_rates.yaml", "各目的市场头程物流费率"),
+    "sites": ("sites.yaml", "抓取站点"),
+}
+
+
+def api_config_get(which):
+    if which not in CONFIG_FILES:
+        raise ValueError("未知配置：%s，可选 %s" % (which, list(CONFIG_FILES)))
+    fname, label = CONFIG_FILES[which]
+    f = DATA / fname
+    return {
+        "which": which, "file": fname, "label": label,
+        "data": load_yaml(str(f)) if f.exists() else {},
+        "raw": f.read_text(encoding="utf-8") if f.exists() else "",
+    }
+
+
+def api_config_save(body):
+    """整段覆盖写入。写前备份、写后立刻用 yaml 解析校验，解析失败自动回滚。"""
+    which = str(body.get("which", ""))
+    if which not in CONFIG_FILES:
+        raise ValueError("未知配置：%s" % which)
+    fname, _ = CONFIG_FILES[which]
+    f = DATA / fname
+
+    raw = body.get("raw")
+    data = body.get("data")
+    if raw is None and data is None:
+        raise ValueError("需要 raw（YAML 文本）或 data（对象）之一")
+
+    if raw is None:
+        import yaml as _y
+        raw = _y.safe_dump(data, allow_unicode=True, sort_keys=False)
+
+    backup = None
+    if f.exists():
+        backup = DATA / ("%s.backup-%s" % (fname, datetime.now().strftime("%Y%m%d-%H%M%S")))
+        backup.write_bytes(f.read_bytes())
+
+    f.write_text(raw, encoding="utf-8")
+    try:
+        parsed = load_yaml(str(f))
+        if not isinstance(parsed, dict) or not parsed:
+            raise ValueError("解析结果不是非空对象")
+        # 平台配置还要校验必需字段，否则保存后所有计算都会崩
+        if which == "platforms":
+            for k, v in parsed.items():
+                if not isinstance(v, dict):
+                    raise ValueError("%s 不是对象" % k)
+                for need in ("commission_rate", "payment_fee_rate"):
+                    if need not in v:
+                        raise ValueError("%s 缺少 %s" % (k, need))
+        if which == "logistics":
+            for k, v in parsed.items():
+                for need in ("base_fee", "rate_per_kg"):
+                    if need not in (v or {}):
+                        raise ValueError("市场 %s 缺少 %s" % (k, need))
+    except Exception as e:
+        if backup:
+            f.write_bytes(backup.read_bytes())   # 回滚，别让坏配置留在盘上
+        raise ValueError("配置格式有误，已回滚：%s" % e)
+
+    return {"saved": which, "file": fname, "keys": sorted(parsed.keys()),
+            "backup": backup.name if backup else None}
+
+
 ROUTES_GET = {
     "/api/health": lambda q: api_health(),
     "/api/data": lambda q: api_data(),
@@ -674,6 +761,7 @@ ROUTES_GET = {
     "/api/job": lambda q: api_job(q.get("id", [""])[0]),
     "/api/products": lambda q: api_products_get(),
     "/api/quotes": lambda q: api_quotes_get(),
+    "/api/config": lambda q: api_config_get(q.get("which", ["platforms"])[0]),
 }
 ROUTES_POST = {
     "/api/profit": api_profit,
@@ -688,6 +776,7 @@ ROUTES_POST = {
     "/api/quotes/save": api_quotes_save,
     "/api/compare-suppliers": api_compare_suppliers,
     "/api/apply-cost": api_apply_cost,
+    "/api/config/save": api_config_save,
 }
 
 

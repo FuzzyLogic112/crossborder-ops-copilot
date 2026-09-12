@@ -8,3 +8,29 @@ EU:
 SEA:
   base_fee: 8
   rate_per_kg: 12
+
+# ── 更多目的市场 ──
+# ⚠️ 全部是**估算占位值**。货代报价一对一议价、不公开挂牌，
+#    请找货代（4PX / 云途 / 燕文 / 递四方等）要一份 rate card 后替换。
+#    改这里不需要改任何代码。
+UK:
+  base_fee: 17
+  rate_per_kg: 23
+JP:
+  base_fee: 12
+  rate_per_kg: 16
+CA:
+  base_fee: 18
+  rate_per_kg: 25
+AU:
+  base_fee: 20
+  rate_per_kg: 28
+MX:
+  base_fee: 22
+  rate_per_kg: 32
+BR:
+  base_fee: 28
+  rate_per_kg: 40
+ME:
+  base_fee: 19
+  rate_per_kg: 26

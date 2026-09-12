@@ -84,3 +84,94 @@ independent_site_paypal:
   payment_fee_rate: 0.0349
   return_rate:
     default: 0.05
+
+# ══════════════════════════════════════════════════════════════
+# 更多销售平台（2026-09-12 检索的公开费率）
+#
+# 来源：
+#   eBay：final value fee 12.9%–15% + $0.30/单（本文件取 13%）
+#         https://www.webgility.com/blog/ebay-fees
+#   Walmart Marketplace：referral fee 6%–20% 按类目，含支付处理，无月费
+#         https://www.spxcommerce.com/blog/marketplace-seller-fees-comparison/
+#   Etsy：交易费 6.5% + 支付 3% + $0.25（美国卖家），另有 $0.20/listing
+#         https://www.webgility.com/blog/etsy-vs-ebay
+#   Temu：卖家佣金约 2%–5%
+#         https://litcommerce.com/blog/how-to-sell-on-temu/
+#   Shopee：本地 2%–8%；**跨境显著更高** —— 新加坡跨境约 14%，
+#           马来西亚从 16.2% 升至 18.36%；2026-02 起新马泰越加收 5% 技术服务费
+#         https://www.getonecart.com/shopee-seller-fees/
+#         https://digitalinasia.com/shopee-lazada-tiktok-shop-fees-2026/
+#   Lazada：标准卖家 2%–6.5%
+#         https://www.getonecart.com/lazada-vs-shopee/
+#
+# ⚠️ 三点必读：
+# 1. 这些是**常见档位**，实际按类目、店铺等级、活动浮动。用前必须核对平台官方费率页。
+# 2. 含固定费（eBay $0.30/单、Etsy $0.25+$0.20/listing）的平台，本简化模型**未计入固定费**，
+#    低客单价商品会被低估成本。
+# 3. return_rate 全部是**估算占位值**，平台不公布，只能用自己店铺历史订单统计。
+
+ebay:
+  # final value fee 13%（12.9%–15% 区间中位），已含支付处理；每单另有 $0.30 固定费未计入
+  commission_rate: 0.108
+  payment_fee_rate: 0.0
+  return_rate:
+    default: 0.08
+    electronics_accessory: 0.12
+
+walmart:
+  # referral fee 按类目 6%–20%，此处取常见档 12%，含支付处理
+  commission_rate: 0.12
+  payment_fee_rate: 0.0
+  return_rate:
+    default: 0.09
+
+walmart_low_fee:
+  # 低费率类目档（如部分消费电子），referral 约 6%
+  commission_rate: 0.06
+  payment_fee_rate: 0.0
+  return_rate:
+    default: 0.10
+
+etsy:
+  # 交易费 6.5% + Etsy Payments 3%（美国卖家）；$0.25/单与 $0.20/listing 未计入
+  commission_rate: 0.065
+  payment_fee_rate: 0.03
+  return_rate:
+    default: 0.06
+
+temu:
+  # 卖家佣金约 2%–5%，此处取 3.5%
+  commission_rate: 0.035
+  payment_fee_rate: 0.0
+  return_rate:
+    default: 0.10
+
+shopee_local:
+  # 本地卖家 2%–8%，此处取 5%
+  commission_rate: 0.05
+  payment_fee_rate: 0.0
+  return_rate:
+    default: 0.07
+
+shopee_crossborder_sg:
+  # 新加坡跨境约 14%，另计 2026-02 起的 5% 技术服务费（合计约 19%）
+  commission_rate: 0.19
+  payment_fee_rate: 0.0
+  return_rate:
+    default: 0.07
+
+shopee_crossborder_my:
+  # 马来西亚跨境 18.36%，另计 5% 技术服务费（合计约 23.4%）
+  commission_rate: 0.234
+  payment_fee_rate: 0.0
+  return_rate:
+    default: 0.07
+
+lazada:
+  # 标准卖家 2%–6.5%，此处取 5%
+  commission_rate: 0.05
+  payment_fee_rate: 0.0
+  return_rate:
+    default: 0.07
+
+

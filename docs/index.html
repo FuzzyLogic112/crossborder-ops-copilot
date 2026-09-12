@@ -110,19 +110,21 @@
 </header>
 
 <nav id="nav">
-  <button data-tab="calc" aria-selected="true">定价计算器</button>
-  <button data-tab="score" aria-selected="false">选品评分</button>
-  <button data-tab="bench" aria-selected="false">选品工作台</button>
-  <button data-tab="src" aria-selected="false">供应商比价</button>
-  <button data-tab="comp" aria-selected="false">竞品数据</button>
-  <button data-tab="listing" aria-selected="false">文案生成</button>
-  <button data-tab="ops" aria-selected="false">抓取与工作流</button>
+  <button data-tab="scrape" aria-selected="true">① 抓取数据</button>
+  <button data-tab="comp" aria-selected="false">② 竞品数据</button>
+  <button data-tab="bench" aria-selected="false">③ 选品工作台</button>
+  <button data-tab="src" aria-selected="false">④ 供应商比价</button>
+  <button data-tab="score" aria-selected="false">⑤ 选品评分</button>
+  <button data-tab="calc" aria-selected="false">⑥ 定价计算器</button>
+  <button data-tab="listing" aria-selected="false">⑦ 文案生成</button>
+  <button data-tab="watch" aria-selected="false">⑧ 变化监控</button>
+  <button data-tab="config" aria-selected="false">配置</button>
   <button data-tab="store" aria-selected="false">数据存储</button>
   <button data-tab="about" aria-selected="false">说明</button>
 </nav>
 
 <!-- ── 定价计算器 ── -->
-<section id="tab-calc">
+<section id="tab-calc" class="hide">
   <div class="grid two">
     <div class="card">
       <h2>输入</h2>
@@ -426,8 +428,8 @@
   </div>
 </section>
 
-<!-- ── 抓取与工作流 ── -->
-<section id="tab-ops" class="hide">
+<!-- ── ① 抓取数据 ── -->
+<section id="tab-scrape">
   <div class="card">
     <h2>抓取真实竞品数据</h2>
     <div id="opsmode"></div>
@@ -467,7 +469,10 @@
       服务只绑定 127.0.0.1，且<strong>不提供改价 / 上架 / 投放 / 发消息任何接口</strong>。
     </div>
   </div>
+</section>
 
+<!-- ── ⑧ 变化监控 ── -->
+<section id="tab-watch" class="hide">
   <div class="card">
     <h2>快照与变化对比</h2>
     <div class="row2">
@@ -500,6 +505,98 @@
     <pre id="wf_out" style="margin:8px 0 0;padding:10px;max-height:240px;overflow:auto;
       background:var(--bg);border:1px solid var(--line);border-radius:7px;
       font:12px/1.55 ui-monospace,Consolas,monospace;white-space:pre-wrap"></pre>
+  </div>
+</section>
+
+<!-- ── 配置 ── -->
+<section id="tab-config" class="hide">
+  <div class="card">
+    <h2>平台 / 市场 / 站点全部可自定义</h2>
+    <p class="note">
+      这三类清单<strong>不写在代码里</strong>，都是 <code>data/*.yaml</code> 配置文件。
+      在这里改完保存即刻生效，所有计算立刻用新配置，不需要重启、不需要动代码。
+    </p>
+    <div id="cfg_mode"></div>
+    <div class="row2">
+      <div><label for="cfg_which">改哪一份</label>
+        <select id="cfg_which">
+          <option value="platforms">销售平台费率（佣金 / 支付费 / 退货率）</option>
+          <option value="logistics">目的市场物流费率（首重 + 续重）</option>
+          <option value="sites">抓取站点</option>
+        </select></div>
+      <div><label>当前条目</label><input id="cfg_keys" readonly></div>
+    </div>
+    <label for="cfg_raw">YAML 内容（直接编辑）</label>
+    <textarea id="cfg_raw" rows="20" spellcheck="false" style="width:100%;padding:10px;
+      font:12px/1.6 ui-monospace,Consolas,monospace;border:1px solid var(--line);
+      border-radius:7px;background:var(--bg);color:var(--ink)"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button id="cfg_save" class="btn">保存并生效</button>
+      <button id="cfg_reload" class="btn ghost">放弃修改，重新读取</button>
+      <button id="cfg_tpl" class="btn ghost">在末尾插入模板</button>
+    </div>
+    <p class="note" id="cfg_status"></p>
+    <div class="cap ok">
+      <strong>写坏了不会有事：</strong>保存前自动备份，保存后立刻用 YAML 解析并校验必需字段，
+      解析失败或缺字段会<strong>自动回滚</strong>到修改前的版本，并告诉你哪里错了。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>三份配置怎么填</h2>
+
+    <h3 style="font-size:14.5px;margin:14px 0 4px">销售平台费率 <code>platforms.yaml</code></h3>
+    <pre style="margin:4px 0;padding:10px;background:var(--bg);border:1px solid var(--line);
+      border-radius:6px;font:12px/1.55 ui-monospace,monospace;overflow-x:auto">你的平台名:
+  commission_rate: 0.13     # 平台佣金率（必需）
+  payment_fee_rate: 0.029   # 支付手续费率（必需，含在佣金里就填 0）
+  return_rate:              # 退货准备金率（可按类目区分）
+    default: 0.08
+    baby_safety: 0.12</pre>
+    <p class="note">
+      已内置 16 个平台：Amazon（标准 / 电子 / 服饰）、TikTok Shop（常规 / 新卖家）、
+      独立站（Stripe / PayPal）、eBay、Walmart（常规 / 低费率类目）、Etsy、Temu、
+      Shopee（本地 / 新加坡跨境 / 马来跨境）、Lazada。
+      <strong>佣金与支付费率是查公开费率表填的，来源链接写在文件头注释里；
+      退货率全部是估算占位值</strong>。
+    </p>
+    <div class="cap">
+      ⚠️ <strong>含固定费的平台会被低估成本。</strong>eBay 每单 $0.30、Etsy 每单 $0.25 加每 listing $0.20 ——
+      本模型只算百分比费率，<strong>没有计入固定费</strong>，低客单价商品尤其要注意。
+    </div>
+
+    <h3 style="font-size:14.5px;margin:16px 0 4px">目的市场物流 <code>logistics_rates.yaml</code></h3>
+    <pre style="margin:4px 0;padding:10px;background:var(--bg);border:1px solid var(--line);
+      border-radius:6px;font:12px/1.55 ui-monospace,monospace;overflow-x:auto">你的市场代码:
+  base_fee: 15        # 首重基础费（元，必需）
+  rate_per_kg: 20     # 续重单价（元/kg，必需）</pre>
+    <p class="note">
+      已内置 10 个市场：US / EU / SEA / UK / JP / CA / AU / MX / BR / ME。
+      <strong>全部是估算占位值</strong> —— 货代报价一对一议价、不公开挂牌，
+      找货代（4PX、云途、燕文、递四方等）要一份 rate card 后替换。
+    </p>
+
+    <h3 style="font-size:14.5px;margin:16px 0 4px">抓取站点 <code>sites.yaml</code></h3>
+    <pre style="margin:4px 0;padding:10px;background:var(--bg);border:1px solid var(--line);
+      border-radius:6px;font:12px/1.55 ui-monospace,monospace;overflow-x:auto">站点代码:
+  domain: www.amazon.xx
+  currency: XXX
+  verified: false     # 是否实测抓取成功过（面板会标 ✓）
+  enabled: true       # 改成 false 就不出现在抓取下拉里
+  note: 备注</pre>
+    <div class="cap">
+      ⚠️ <strong>加站点不是只改这里就能抓。</strong>抓取工具（amzrank）也要支持该站点，
+      否则会报「页面没有榜单元素」。已内置 us / jp / uk / de 四个站可抓；
+      fr / it / es / ca / au 已列出但 <code>enabled: false</code>，
+      因为<strong>需要先在抓取工具的 SITES 里补对应配置</strong>。
+    </div>
+
+    <h3 style="font-size:14.5px;margin:16px 0 4px">类目 slug</h3>
+    <p class="note">
+      <strong>类目不需要配置，本来就是自由填的。</strong>只校验格式（小写字母、数字、连字符），
+      不限制取值 —— 因为各站 slug 不同（美国站玩具是 <code>toys-and-games</code> 而不是 <code>toys</code>）。
+      抓不到时去目标站榜单页，看地址栏 <code>/gp/bestsellers/&lt;这一段&gt;/</code> 的真实值。
+    </p>
   </div>
 </section>
 
@@ -875,7 +972,7 @@ function selfCheck(){
 $("nav").addEventListener("click", e=>{
   const b = e.target.closest("button"); if (!b) return;
   [...$("nav").children].forEach(x=>x.setAttribute("aria-selected", x===b));
-  ["calc","score","bench","src","comp","listing","ops","store","about"].forEach(t=>
+  ["scrape","comp","bench","src","score","calc","listing","watch","config","store","about"].forEach(t=>
     $("tab-"+t).classList.toggle("hide", t !== b.dataset.tab));
 });
 
@@ -1346,6 +1443,94 @@ function initSourcing(){
   $("src_sku").addEventListener("change", renderQuotes);
 }
 
+/* ═══════════ 配置编辑 ═══════════ */
+const CFG_TEMPLATES = {
+  platforms: `
+你的平台名:
+  commission_rate: 0.13
+  payment_fee_rate: 0.029
+  return_rate:
+    default: 0.08
+`,
+  logistics: `
+你的市场代码:
+  base_fee: 15
+  rate_per_kg: 20
+`,
+  sites: `
+站点代码:
+  domain: www.amazon.xx
+  currency: XXX
+  verified: false
+  enabled: true
+  note: 备注
+`,
+};
+
+function renderCfgMode(){
+  $("cfg_mode").innerHTML = LOCAL
+    ? `<div class="cap ok"><strong>本地服务已连接</strong> —— 可直接读写 <code>data/*.yaml</code>。</div>`
+    : `<div class="cap"><strong>编辑配置需要本地服务。</strong>
+        配置文件在你自己机器上，网页读不到也写不了。
+        在项目目录运行 <code>python serve.py --open</code>，用它打开的地址访问面板。
+        <br>也可以直接用编辑器改 <code>data/platforms.yaml</code> 等文件，效果一样。</div>`;
+  ["cfg_save","cfg_reload","cfg_tpl"].forEach(id=>{ if($(id)) $(id).disabled = !LOCAL; });
+  if (!LOCAL) $("cfg_raw").value = "（连接本地服务后显示配置内容）";
+}
+
+async function cfgLoad(){
+  if (!LOCAL) return;
+  try{
+    const r = await api("/api/config?which=" + $("cfg_which").value);
+    $("cfg_raw").value = r.raw || "";
+    const keys = Object.keys(r.data || {});
+    $("cfg_keys").value = keys.length + " 项：" + keys.join(", ");
+    $("cfg_status").textContent = "已读取 " + r.file;
+  }catch(e){ $("cfg_status").textContent = "读取失败：" + e.message; }
+}
+
+async function cfgSave(){
+  try{
+    const r = await api("/api/config/save", {
+      which: $("cfg_which").value, raw: $("cfg_raw").value});
+    $("cfg_status").innerHTML = `✓ 已保存 <code>${esc(r.file)}</code>，`
+      + `共 <strong>${r.keys.length}</strong> 项`
+      + (r.backup ? `（备份 <code>${esc(r.backup)}</code>）` : "")
+      + `。<strong>已立刻生效</strong>，无需重启。`;
+    $("cfg_keys").value = r.keys.length + " 项：" + r.keys.join(", ");
+    // 重新拉一次主数据与探测，让新平台/新市场出现在各处下拉里
+    try{
+      LOCAL = await probeLocal() || LOCAL;
+      D = await api("/api/data");
+      renderModeBanner(); initCalcPresets(); renderScore(); refreshCalcOptions();
+    }catch(e){}
+  }catch(e){
+    $("cfg_status").innerHTML = `<strong style="color:var(--bad)">保存失败，已自动回滚：</strong>`
+      + esc(e.message);
+  }
+}
+
+function refreshCalcOptions(){
+  // 配置改了之后，定价计算器的平台/市场下拉要跟着更新
+  if (!D || !D.platforms) return;
+  const keepP = $("plat").value, keepM = $("mkt").value;
+  $("plat").innerHTML = Object.keys(D.platforms).map(k=>`<option value="${k}">${k}</option>`).join("");
+  $("mkt").innerHTML  = Object.keys(D.logistics).map(k=>`<option value="${k}">${k}</option>`).join("");
+  if (D.platforms[keepP]) $("plat").value = keepP;
+  if (D.logistics[keepM]) $("mkt").value = keepM;
+  renderCalc();
+}
+
+function initConfig(){
+  $("cfg_which").addEventListener("change", cfgLoad);
+  $("cfg_reload").addEventListener("click", cfgLoad);
+  $("cfg_save").addEventListener("click", cfgSave);
+  $("cfg_tpl").addEventListener("click", ()=>{
+    $("cfg_raw").value += CFG_TEMPLATES[$("cfg_which").value] || "";
+    $("cfg_status").textContent = "已在末尾插入模板，改完记得点保存。";
+  });
+}
+
 /* ═══════════ 本地服务探测 ═══════════ */
 let LOCAL = null;   // null = 未连接；否则是 {base, health}
 
@@ -1418,6 +1603,7 @@ function renderModeBanner(){
 
   renderBenchMode();
   renderSrcMode();
+  renderCfgMode();
   const dis = !on;
   ["sc_run","mo_run","wf_run"].forEach(id=>{ if($(id)) $(id).disabled = dis; });
   if ($("sc_run")) $("sc_run").disabled = !scrape;
@@ -1712,12 +1898,31 @@ function initOps(){
   renderStore();
 }
 
-// 优先读本地真实数据版（data.local.json，不进公开仓库），读不到回退到演示版
-fetch("data.local.json")
-  .then(r => r.ok ? r.json() : Promise.reject())
-  .catch(() => fetch("data.json").then(r=>r.json()))
-  .then(d=>{
-  D = d;
+// 启动顺序：先探测本地服务。连上就用它的实时数据（配置改动立刻反映），
+// 没连上才回退到预生成的静态 JSON（data.local.json 优先，再 data.json）。
+async function boot(){
+  try{
+    LOCAL = await probeLocal();
+  }catch(e){ LOCAL = null; }
+
+  try{
+    if (LOCAL){
+      D = await api("/api/data");
+    } else {
+      let r = await fetch("data.local.json").catch(()=>null);
+      if (!r || !r.ok) r = await fetch("data.json");
+      D = await r.json();
+    }
+  }catch(err){
+    document.querySelector(".wrap").insertAdjacentHTML("afterbegin",
+      '<div class="cap"><strong>读不到数据。</strong>'
+      + '本地运行请执行 <code>python serve.py --open</code>；'
+      + '纯静态部署请先运行 <code>python build_dashboard.py</code> 生成 data.json，'
+      + '并通过 HTTP 打开本页（不能用 file:// 直接打开）。</div>');
+    console.error(err);
+    return;
+  }
+
   renderBadges();
   initCalc();
   renderScore();
@@ -1727,14 +1932,15 @@ fetch("data.local.json")
   initOps();
   initBench();
   initSourcing();
-  probeLocal().then(l=>{ LOCAL = l; renderModeBanner(); loadSnapshots();
-    benchInitSnaps(); srcInit(); });
-}).catch(err=>{
-  document.querySelector(".wrap").insertAdjacentHTML("afterbegin",
-    '<div class="cap"><strong>读不到 data.json。</strong>请先运行 '
-    + '<code>python build_dashboard.py</code> 生成数据，并通过 HTTP 打开本页（不能用 file:// 直接打开）。</div>');
-  console.error(err);
-});
+  initConfig();
+
+  renderModeBanner();
+  loadSnapshots();
+  benchInitSnaps();
+  srcInit();
+  cfgLoad();
+}
+boot();
 </script>
 </body>
 </html>
