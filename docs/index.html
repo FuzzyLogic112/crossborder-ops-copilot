@@ -488,6 +488,19 @@
                placeholder="例：家居厨房 / 玩具 / kitchen">
         <datalist id="catlist"></datalist>
         <div id="sc_resolve" class="note" style="margin:6px 0 0"></div>
+        <label for="sc_list" style="margin-top:10px">抓哪个榜</label>
+        <select id="sc_list">
+          <option value="bestsellers">热销榜 Best Sellers</option>
+          <option value="new">新品榜 New Releases</option>
+          <option value="movers">飙升榜 Movers &amp; Shakers</option>
+        </select>
+        <div class="cap" style="margin-top:8px">
+          <strong>新手别只看热销榜。</strong>实测美国站办公用品热销榜前 68 名里，
+          <strong>76% 是大牌或 Amazon 自有品牌</strong>、62% 售价低于 $10 ——
+          那是已经被占住的位置，从这里选品等于挑最强的对手打。
+          <strong>新品榜</strong>看的是最近上架且卖得动的，缺口更可能还在；
+          <strong>飙升榜</strong>看排名涨得最快的，适合抓短期趋势。
+        </div>
         <p class="note" id="sc_hint"></p>
         <div class="row2">
           <div><label for="sc_pages">页数（上限 3）</label>
@@ -1870,6 +1883,7 @@ async function runScrape(){
   const body = {
     site: $("sc_site").value,
     category: $("sc_cat").value.trim(),
+    list: $("sc_list").value,
     pages: +$("sc_pages").value || 1,
     delay: +$("sc_delay").value || 3,
   };
@@ -1877,7 +1891,7 @@ async function runScrape(){
   $("sc_status").textContent = "提交中…";
   try{
     const r = await api("/api/scrape", body);
-    $("sc_status").innerHTML = `任务 <code>${r.job_id}</code> 已启动：${r.site} / ${r.category} / ${r.pages} 页 / 间隔 ${r.delay}s`
+    $("sc_status").innerHTML = `任务 <code>${r.job_id}</code> 已启动：${r.site} / ${r.category} / ${esc(r.list_label||r.list||"")} / ${r.pages} 页 / 间隔 ${r.delay}s`
       + `${(r.pages!==body.pages||r.delay!==body.delay) ? '<br><strong>注意：参数被服务端钳制到安全范围</strong>' : ''}`;
     pollJob(r.job_id, "sc_log", "sc_status", res=>{
       $("sc_status").innerHTML = `✓ 抓到 <strong>${res.rows}</strong> 条 → <code>${esc(res.csv)}</code>，已入库（快照 <code>${esc(res.snapshot_date)}</code>）`;

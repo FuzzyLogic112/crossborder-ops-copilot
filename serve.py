@@ -198,6 +198,7 @@ def api_health():
         "verified_categories": verified_categories(),
         "known_bad_categories": known_bad_categories(),
         "category_choices": {s: category_choices(s) for s in enabled_sites()},
+        "list_types": LIST_TYPES,
         "slug_hint": "类目 slug 各站不同。抓不到时去目标站榜单页，看地址栏 /gp/bestsellers/<这一段>/ 的真实值",
         "market_currency": MARKET_CURRENCY,
         "default_fx": DEFAULT_FX,
@@ -330,14 +331,26 @@ def joblog(job_id, line):
             JOBS[job_id]["log"].append("[%s] %s" % (time.strftime("%H:%M:%S"), line))
 
 
-def run_scrape(job_id, site, category, pages, delay):
+# 三种榜单，选品意义完全不同。
+# 热销榜是「已经被占住的位置」——实测美国站办公用品前 68 名里
+# 76% 是大牌或 Amazon 自有品牌，新手从这里选品等于挑最强的对手打。
+# 新品榜和飙升榜看的是「正在起量的」，缺口更可能还在。
+LIST_TYPES = {
+    "bestsellers": "热销榜 —— 已经卖爆的，位置基本被占住了",
+    "new": "新品榜 —— 最近上架且卖得动的，适合找还没被占的缺口",
+    "movers": "飙升榜 —— 排名涨得最快的，适合抓短期趋势",
+}
+
+
+def run_scrape(job_id, site, category, pages, delay, list_key="bestsellers"):
     amzrank = find_amzrank()
     if not amzrank:
         raise RuntimeError("找不到 amzrank.py。请把抓取脚本放到 ../amzrank-stage/scraper/ 下")
 
-    joblog(job_id, "启动抓取：%s / %s / %d 页 / 间隔 %.1fs" % (site, category, pages, delay))
+    joblog(job_id, "启动抓取：%s / %s / %s / %d 页 / 间隔 %.1fs"
+           % (site, category, list_key, pages, delay))
     cmd = [sys.executable, str(amzrank), "--site", site, "--category", category,
-           "--pages", str(pages), "--delay", str(delay)]
+           "--list", list_key, "--pages", str(pages), "--delay", str(delay)]
     proc = subprocess.run(cmd, cwd=str(amzrank.parent), capture_output=True,
                           text=True, encoding="utf-8", errors="replace", timeout=900)
     for line in (proc.stdout or "").splitlines():
@@ -353,11 +366,27 @@ def run_scrape(job_id, site, category, pages, delay):
     from adapters.amzrank_adapter import convert, latest_amzrank_output
     src = latest_amzrank_output(str(amzrank.parent / "amzrank_out"))
     date = datetime.now().strftime("%Y-%m-%d")
-    out = DATA / "real" / ("competitors_%s_%s_%s.csv" % (site, category, date))
+    # 榜单类型必须进文件名和快照日期，否则同一天抓热销榜和新品榜会互相覆盖。
+    # bestsellers 不加后缀：它是默认值，也是文档里一直用的命名。
+    suffix = "" if list_key == "bestsellers" else "_" + list_key
+    out = DATA / "real" / ("competitors_%s_%s%s_%s.csv" % (site, category, suffix, date))
     count = convert(src, str(out), date, platform="amazon")
+
+    # 让快照的 category 带上榜单类型，这样「拿热销榜比新品榜」会被现成的
+    # 类目一致性守卫直接拦下 —— 那是无效对比：两个榜的商品本来就不是一批。
+    if list_key != "bestsellers":
+        import csv as _csv
+        rows = list(_csv.DictReader(out.open(encoding="utf-8-sig")))
+        if rows:
+            for r in rows:
+                r["category"] = "%s@%s" % (r.get("category") or category, list_key)
+            with out.open("w", newline="", encoding="utf-8-sig") as fh:
+                w = _csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
+                w.writeheader(); w.writerows(rows)
     joblog(job_id, "已转换 %d 条 -> %s" % (count, out.name))
 
-    n = ingest_csv(str(out), "%s-%s-%s" % (site, category, date), str(DATA / "history.db"))
+    n = ingest_csv(str(out), "%s-%s%s-%s" % (site, category, suffix.replace("_", "-"), date),
+                   str(DATA / "history.db"))
     joblog(job_id, "已入库 %d 条" % n)
 
     return {
@@ -399,11 +428,17 @@ def api_scrape(body):
     # 中文名、同义词、或直接写 slug 都接受 —— 解析结果会原样回给前端展示，
     # 不偷偷替换，用户始终知道实际抓的是哪个 slug。
     category, cat_info = resolve_category(body.get("category", "pet-supplies"), site)
+    list_key = str(body.get("list", "bestsellers")).lower()
+    if list_key not in LIST_TYPES:
+        raise ValueError("未知榜单类型 %s，可选：%s"
+                         % (list_key, "、".join("%s（%s）" % (k, v.split(" ——")[0])
+                                                for k, v in LIST_TYPES.items())))
     pages = max(1, min(MAX_PAGES, pages))
     delay = max(MIN_DELAY, delay)     # 不允许低于 3 秒
 
-    job_id = start_job(run_scrape, site, category, pages, delay)
-    return {"job_id": job_id, "site": site, "category": category,
+    job_id = start_job(run_scrape, site, category, pages, delay, list_key)
+    return {"job_id": job_id, "site": site, "category": category, "list": list_key,
+            "list_label": LIST_TYPES[list_key],
             "pages": pages, "delay": delay, "category_info": cat_info}
 
 
