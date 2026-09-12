@@ -46,17 +46,44 @@ def rank_coverage(rows: Dict[str, dict]):
     return (min(ranks), max(ranks)) if ranks else None
 
 
+def snapshot_categories(rows: Dict[str, dict]):
+    """返回快照里出现过的类目集合；没有 category 字段时返回空集。"""
+    return {str(r.get("category")).strip() for r in rows.values()
+            if str(r.get("category") or "").strip()}
+
+
+def category_warning(before: Dict[str, dict], after: Dict[str, dict]):
+    """两份快照是**不同类目**时，对比结果全是垃圾——前一份的商品全被判成「下架」，
+    后一份的全被判成「新品上榜」，而榜单名次范围却完全一致，覆盖度守卫抓不到。
+    这是实跑踩到的坑：拿 kitchen(68条) 比 office-products(68条)，
+    产出 68 条假 new_listing + 68 条假 delisted，且不触发任何告警。
+    返回警告文本，或 None。
+    """
+    cb, ca = snapshot_categories(before), snapshot_categories(after)
+    if not cb or not ca or cb == ca:
+        return None
+    return ("两份快照的类目不同（前：%s，后：%s）。不同类目之间没有可比性——"
+            "前一份的商品会全部被判成「下架」，后一份会全部被判成「新品上榜」。"
+            "请改用同一类目、不同日期的两份快照。"
+            % ("/".join(sorted(cb)), "/".join(sorted(ca))))
+
+
 def coverage_warning(before: Dict[str, dict], after: Dict[str, dict]):
     """两份快照抓取的页数不同时，多出来的商品会被误判成「新品上榜」。
     这是真实踩过的坑：拿 1 页(30条) 比 2 页(68条)，凭空多出 38 条假的 new_listing。
+    类目不一致是另一种更隐蔽的情况（行数可能完全相同），一并在这里拦。
     返回警告文本，或 None。
     """
+    # 类目不同优先报——它比页数不同更致命，且无法靠限制排名范围补救
+    cat = category_warning(before, after)
+    if cat:
+        return cat
     cb, ca = rank_coverage(before), rank_coverage(after)
     if not cb or not ca:
         return None
     if cb[1] == ca[1]:
         return None
-    return ("⚠ 两份快照的榜单覆盖范围不同（前：第 %d-%d 名，后：第 %d-%d 名）。"
+    return ("两份快照的榜单覆盖范围不同（前：第 %d-%d 名，后：第 %d-%d 名）。"
             "范围外的商品会被误判为「新品上榜」，请用相同页数、相同类目的快照对比。"
             % (cb[0], cb[1], ca[0], ca[1]))
 

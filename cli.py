@@ -109,7 +109,9 @@ def cmd_monitor(args):
     changes, warning = compare_snapshots(args.from_snap, args.to_snap)
     digest = build_daily_digest(changes)
     if warning:
-        digest = warning + "\n\n" + digest
+        # 终端没有 UI 帮忙加图标，这里自己加。
+        # 约定：后端警告文本不带图标，呈现由调用方负责（与 src/sourcing.py 一致）。
+        digest = "⚠ " + warning + "\n\n" + digest
     print(digest)
     if args.output:
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)

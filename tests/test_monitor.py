@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
 
-from src.monitor import compare_snapshots, build_daily_digest, rank_coverage, coverage_warning
+from src.monitor import (compare_snapshots, build_daily_digest, rank_coverage,
+                        coverage_warning, category_warning, snapshot_categories)
 
 DATA = Path(__file__).parent.parent / "data"
 
@@ -74,6 +75,57 @@ def test_coverage_warning_fires_on_page_count_mismatch():
 
 def test_coverage_warning_silent_when_same_range():
     assert coverage_warning(_rows(1, 30), _rows(1, 30)) is None
+
+
+def _cat_rows(n_start, n_end, category, price=10.0):
+    rows = _rows(n_start, n_end, price)
+    for r in rows.values():
+        r["category"] = category
+    return rows
+
+
+def test_snapshot_categories_collects_distinct_values():
+    assert snapshot_categories(_cat_rows(1, 5, "kitchen")) == {"kitchen"}
+
+
+def test_snapshot_categories_empty_when_field_missing():
+    assert snapshot_categories(_rows(1, 5)) == set()
+
+
+def test_category_warning_fires_on_different_categories():
+    """实跑踩到的坑：kitchen(68条) 比 office-products(68条)，
+    排名范围完全相同，覆盖度守卫抓不到，却产出 136 条垃圾变化。"""
+    w = category_warning(_cat_rows(1, 68, "kitchen"),
+                         _cat_rows(1, 68, "office-products"))
+    assert w is not None
+    assert "类目不同" in w
+    assert "kitchen" in w and "office-products" in w
+
+
+def test_category_warning_silent_when_same_category():
+    assert category_warning(_cat_rows(1, 68, "kitchen"),
+                            _cat_rows(1, 68, "kitchen")) is None
+
+
+def test_coverage_warning_catches_category_mismatch_at_same_coverage():
+    """行数与排名范围都相同、只有类目不同时，coverage_warning 也必须报警。"""
+    w = coverage_warning(_cat_rows(1, 68, "kitchen"),
+                         _cat_rows(1, 68, "office-products"))
+    assert w is not None
+    assert "类目不同" in w
+
+
+def test_category_mismatch_takes_priority_over_page_mismatch():
+    """两个问题同时存在时，先报类目——它更致命且无法靠限制排名范围补救。"""
+    w = coverage_warning(_cat_rows(1, 30, "kitchen"),
+                         _cat_rows(1, 68, "office-products"))
+    assert "类目不同" in w
+
+
+def test_no_category_field_falls_back_to_coverage_check():
+    """旧快照没有 category 列时，不能因此漏掉页数守卫。"""
+    w = coverage_warning(_rows(1, 30), _rows(1, 68))
+    assert w is not None and "覆盖范围不同" in w
 
 
 def test_mismatched_pages_do_not_produce_fake_new_listings():
