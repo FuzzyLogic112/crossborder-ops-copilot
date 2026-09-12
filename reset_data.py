@@ -18,10 +18,16 @@
   data/sites.yaml                 抓取站点
   data/competitors_2026-09-1*.csv 演示快照（git 跟踪，公开仓库的 demo 要靠它）
 
+两种力度：
+    默认      清采集数据，products.csv 恢复成 10 个 TRAVEL 演示品，保留演示快照
+    --all     **连演示数据一起清**。products.csv 只留表头，演示快照也删。
+              适合「我要一个完全空的环境，分得清哪些是我自己抓的」。
+
 用法：
-    python reset_data.py            # 先看要删什么，不动手
-    python reset_data.py --yes      # 真的执行
-    python reset_data.py --yes --backup DIR   # 执行前先拷一份到 DIR
+    python reset_data.py                  # 先看要删什么，不动手
+    python reset_data.py --yes            # 执行（保留演示数据）
+    python reset_data.py --all            # 预览「全清」会删什么
+    python reset_data.py --all --yes --backup DIR   # 全清，并先备份
 """
 import argparse
 import csv
@@ -60,9 +66,18 @@ SUPPLIER_COLUMNS = ["sku", "platform", "supplier", "unit_price", "moq",
                     "quoted_date", "url", "notes"]
 
 
-def collect():
-    """列出要删的东西。返回 (文件列表, 说明列表)。"""
+def collect(hard=False):
+    """列出要删的东西。返回 (文件列表, 说明列表)。
+
+    hard=True 时连演示快照也删 —— 混在一起时用户分不清哪份是自己抓的。
+    """
     files, notes = [], []
+
+    if hard:
+        demo = sorted(DATA.glob("competitors_*.csv"))
+        files += demo
+        if demo:
+            notes.append("演示快照：%d 个（--all 才删）" % len(demo))
 
     db = DATA / "history.db"
     if db.exists():
@@ -109,14 +124,16 @@ def count_rows(path):
         return max(0, sum(1 for _ in f) - 1)
 
 
-def reset_products():
+def reset_products(hard=False):
+    """hard=True 时只留表头 —— 演示品混在自己抓的品里分不清，全清更省心。"""
     f = DATA / "products.csv"
     before = count_rows(f)
+    rows = [] if hard else DEMO_PRODUCTS
     with f.open("w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh)
         w.writerow(PRODUCT_COLUMNS)
-        w.writerows(DEMO_PRODUCTS)
-    return before, len(DEMO_PRODUCTS)
+        w.writerows(rows)
+    return before, len(rows)
 
 
 def reset_suppliers():
@@ -130,29 +147,42 @@ def reset_suppliers():
 def main():
     ap = argparse.ArgumentParser(description="重置项目数据（保留配置）")
     ap.add_argument("--yes", action="store_true", help="真的执行删除")
+    ap.add_argument("--all", dest="hard", action="store_true",
+                    help="连演示数据一起清，得到完全空的环境")
     ap.add_argument("--backup", metavar="DIR", help="执行前先把待删文件拷到 DIR")
     args = ap.parse_args()
 
-    files, notes = collect()
+    hard = args.hard
+    files, notes = collect(hard)
     prod_rows = count_rows(DATA / "products.csv")
     supp_rows = count_rows(DATA / "suppliers.csv")
 
+    print("模式：%s" % ("全清（--all）—— 演示数据也删，得到完全空的环境"
+                        if hard else "常规 —— 保留演示数据"))
+    print()
     print("将要清除：")
     for n in notes:
         print("  -", n)
-    print("  - products.csv：%d 个候选品 → 恢复成 %d 个 TRAVEL 演示品"
-          % (prod_rows, len(DEMO_PRODUCTS)))
+    if hard:
+        print("  - products.csv：%d 个候选品 → 只留表头" % prod_rows)
+    else:
+        print("  - products.csv：%d 个候选品 → 恢复成 %d 个 TRAVEL 演示品"
+              % (prod_rows, len(DEMO_PRODUCTS)))
     print("  - suppliers.csv：%d 条报价 → 只留表头" % supp_rows)
     print()
     print("将要保留（配置是设置，不是数据）：")
-    for name in ("platforms.yaml", "logistics_rates.yaml", "sites.yaml"):
+    for name in ("platforms.yaml", "logistics_rates.yaml",
+                 "sites.yaml", "category_aliases.yaml"):
         print("  -", "data/%s" % name)
-    for p in sorted(DATA.glob("competitors_2026-*.csv")):
-        print("  - data/%s（演示快照，git 跟踪）" % p.name)
+    if not hard:
+        for p in sorted(DATA.glob("competitors_2026-*.csv")):
+            print("  - data/%s（演示快照；--all 会连它一起删）" % p.name)
 
     if not args.yes:
         print()
         print("这只是预览，什么都没动。真要执行加 --yes")
+        if not hard:
+            print("想要完全空的环境（演示数据也删）：加 --all")
         return 0
 
     if args.backup:
@@ -176,8 +206,8 @@ def main():
             print("删不掉 %s：%s" % (p.name, e), file=sys.stderr)
     print("已删除 %d 个文件" % removed)
 
-    pb, pa = reset_products()
-    print("products.csv：%d → %d 行（演示品）" % (pb, pa))
+    pb, pa = reset_products(hard)
+    print("products.csv：%d → %d 行%s" % (pb, pa, "（只留表头）" if hard else "（演示品）"))
     sb, sa = reset_suppliers()
     print("suppliers.csv：%d → %d 行（只留表头）" % (sb, sa))
 
@@ -185,6 +215,9 @@ def main():
     print("重置完成。接下来：")
     print("  1. python build_dashboard.py     重建公开面板数据")
     print("  2. python serve.py --open        从「① 抓取数据」重新开始")
+    if hard:
+        print()
+        print("现在环境是空的 —— 面板里出现的任何数据都是你自己抓的。")
     return 0
 
 

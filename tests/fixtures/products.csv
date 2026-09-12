@@ -1,0 +1,11 @@
+﻿sku,name,category,cost_price,packaging_cost,weight_kg,volume_l,compliance_flag,demand_score,gap_score,logistics_score,content_score,planned_price
+TRAVEL-001,旅行折叠收纳袋,home_organization,18,2,0.4,3.5,ok,22,16,13,8,78
+TRAVEL-002,真空压缩收纳袋,home_organization,9,1.5,0.3,2.8,ok,20,10,14,6,52
+TRAVEL-003,宠物伸缩牵引绳,pet_supplies,18,2,0.4,1.2,ok,20,15,13,7,68
+TRAVEL-004,儿童安全座椅头枕,baby_safety,35,3,0.9,6.0,review_needed,15,12,9,5,125
+TRAVEL-005,磁吸车载手机支架,electronics_accessory,12,1,0.2,0.8,ok,18,8,14,6,55
+TRAVEL-006,美白牙贴,beauty_health,6,0.8,0.1,0.3,banned,24,18,15,9,25
+TRAVEL-007,桌面收纳盒,home_organization,10,1.2,0.5,4.0,ok,16,9,13,7,60
+TRAVEL-008,户外折叠椅,outdoor,28,3.5,2.1,15.0,ok,17,14,7,8,72
+TRAVEL-009,防水手机袋,electronics_accessory,5,0.6,0.05,0.2,ok,19,11,15,5,36
+TRAVEL-010,儿童退热贴,baby_safety,4,0.5,0.05,0.15,review_needed,21,10,15,4,20

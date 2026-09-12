@@ -8,6 +8,10 @@ from src.calculator import load_products, load_yaml, calculate_unit_profit, scor
 from src.models import Product
 
 DATA = Path(__file__).parent.parent / "data"
+# 测试自带数据。不能用 data/ 下的文件——那是用户数据，
+# `reset_data.py --all` 会清空它，清完跑测试会一片红。
+FIXTURES = Path(__file__).parent / "fixtures"
+
 
 
 @pytest.fixture(scope="module")
@@ -22,7 +26,7 @@ def logistics_cfg():
 
 @pytest.fixture(scope="module")
 def products():
-    return load_products(str(DATA / "products.csv"))
+    return load_products(str(FIXTURES / "products.csv"))
 
 
 def make_product(**overrides):

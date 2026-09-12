@@ -905,8 +905,23 @@ function renderScore(){
 /* ───── Tab 3 竞品 ───── */
 function renderComp(){
   const useReal = D.mode === "real" && D.competitors_real && D.competitors_real.length;
-  const comps = useReal ? D.competitors_real : D.competitors_demo;
-  const ch    = (useReal && D.changes_real) ? D.changes_real : D.changes_demo;
+  // 全空环境（reset_data.py --all 之后）这些都会是 null/空数组。
+  // 不兜底的话 boot() 会在这里抛异常中断，后面的事件绑定全不执行 ——
+  // 界面看着正常但所有按钮都没反应，极难排查。
+  const comps = (useReal ? D.competitors_real : D.competitors_demo) || [];
+  const ch    = ((useReal && D.changes_real) ? D.changes_real : D.changes_demo)
+                || {warning: null, items: []};
+
+  if (!comps.length){
+    $("compsrc").textContent = "暂无数据";
+    $("compsrc").className = "badge";
+    $("compnote").innerHTML = "还没有竞品数据 —— 先去 <strong>「① 抓取数据」</strong>抓一份。";
+    $("warnbox").innerHTML = "";
+    $("changes").innerHTML = '<p class="note">抓到第一份数据后，这里会显示竞品快照；'
+      + '<strong>第二天同参数再抓一次</strong>，才会出现变化日报。</p>';
+    $("ctbl").innerHTML = "";
+    return;
+  }
 
   $("compsrc").textContent = useReal ? "真实抓取数据" : "演示用虚构数据";
   $("compsrc").className = "badge " + (useReal ? "g" : "r");
@@ -981,6 +996,10 @@ $("nav").addEventListener("click", async e=>{
   if (b.dataset.tab === "src"){
     try{ await refreshSrcSkus(); renderQuotes(); }catch(err){}
   }
+  // 同理，进入「③ 选品工作台」时刷快照下拉 —— 可能刚在①抓完新数据。
+  if (b.dataset.tab === "bench"){
+    try{ await benchRefreshSnaps(); }catch(err){}
+  }
 });
 
 /* ───── 启动 ───── */
@@ -1009,14 +1028,31 @@ function renderBenchMode(){
     if ($(id)) $(id).disabled = !LOCAL; });
 }
 
-async function benchInitSnaps(){
-  if (!LOCAL) return;
+// 只刷快照下拉，不碰编辑区 —— 抓完新数据要能立刻出现在这里，
+// 但不能把用户正在填的字段冲掉（benchInitSnaps 会用 products.csv 重置 editRows）。
+async function benchRefreshSnaps(){
+  if (!LOCAL) return 0;
+  const keep = $("bh_snap").value;
   try{
     const r = await api("/api/snapshots");
     const real = (r.snapshots||[]).filter(s=>s.real);
     const list = real.length ? real : (r.snapshots||[]);
+    if (!list.length){
+      $("bh_snap").innerHTML = `<option value="">（还没有竞品快照）</option>`;
+      $("bh_status").innerHTML = "还没有竞品快照 —— 先去 <strong>「① 抓取数据」</strong>抓一份。";
+      return 0;
+    }
     $("bh_snap").innerHTML = list.map(s=>
       `<option value="${esc(s.path)}">${esc(s.name)} · ${s.rows} 行${s.real?" · 真实":""}</option>`).join("");
+    if (keep && list.some(s=>s.path === keep)) $("bh_snap").value = keep;
+    return list.length;
+  }catch(e){ return 0; }
+}
+
+async function benchInitSnaps(){
+  if (!LOCAL) return;
+  try{
+    await benchRefreshSnaps();
     const p = await api("/api/products");
     BENCH.manual = p.manual_only || [];
     BENCH.editRows = (p.rows||[]).map(r=>({...r}));
@@ -1766,7 +1802,12 @@ async function runScrape(){
       + `${(r.pages!==body.pages||r.delay!==body.delay) ? '<br><strong>注意：参数被服务端钳制到安全范围</strong>' : ''}`;
     pollJob(r.job_id, "sc_log", "sc_status", res=>{
       $("sc_status").innerHTML = `✓ 抓到 <strong>${res.rows}</strong> 条 → <code>${esc(res.csv)}</code>，已入库（快照 <code>${esc(res.snapshot_date)}</code>）`;
-      loadSnapshots();
+      loadSnapshots();                       // ⑧ 变化监控的快照下拉
+      // ③ 选品工作台的快照下拉也必须跟着刷 —— 否则刚抓的数据在那边选不到。
+      benchRefreshSnaps().then(n=>{
+        if (n) $("sc_status").innerHTML +=
+          `<br><span class="note">已同步到「③ 选品工作台」，可以去挑候选品了。</span>`;
+      });
     });
   }catch(e){ $("sc_status").textContent = "失败：" + e.message; }
 }

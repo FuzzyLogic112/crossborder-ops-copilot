@@ -5,12 +5,16 @@ from src.monitor import (compare_snapshots, build_daily_digest, rank_coverage,
                         coverage_warning, category_warning, snapshot_categories)
 
 DATA = Path(__file__).parent.parent / "data"
+# 测试自带数据。不能用 data/ 下的文件——那是用户数据，
+# `reset_data.py --all` 会清空它，清完跑测试会一片红。
+FIXTURES = Path(__file__).parent / "fixtures"
+
 
 
 def test_compare_snapshots_detects_price_drop_and_new_listing():
     changes, _ = compare_snapshots(
-        str(DATA / "competitors_2026-09-10.csv"),
-        str(DATA / "competitors_2026-09-11.csv"),
+        str(FIXTURES / "snapshot_day1.csv"),
+        str(FIXTURES / "snapshot_day2.csv"),
     )
     types_by_item = {}
     for c in changes:
@@ -27,16 +31,16 @@ def test_compare_snapshots_detects_price_drop_and_new_listing():
 
 def test_no_changes_when_snapshots_identical():
     changes, _ = compare_snapshots(
-        str(DATA / "competitors_2026-09-10.csv"),
-        str(DATA / "competitors_2026-09-10.csv"),
+        str(FIXTURES / "snapshot_day1.csv"),
+        str(FIXTURES / "snapshot_day1.csv"),
     )
     assert changes == []
 
 
 def test_daily_digest_contains_price_drop_suggestion():
     changes, _ = compare_snapshots(
-        str(DATA / "competitors_2026-09-10.csv"),
-        str(DATA / "competitors_2026-09-11.csv"),
+        str(FIXTURES / "snapshot_day1.csv"),
+        str(FIXTURES / "snapshot_day2.csv"),
     )
     digest = build_daily_digest(changes)
     assert "price_drop" in digest

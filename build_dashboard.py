@@ -63,11 +63,18 @@ def read_csv_rows(path, limit=None):
 
 
 def export_changes():
-    """演示用的变化日报（虚构数据，两份快照覆盖范围一致）。"""
-    changes, warning = compare_snapshots(
-        str(DATA / "competitors_2026-09-10.csv"),
-        str(DATA / "competitors_2026-09-11.csv"),
-    )
+    """演示用的变化日报（虚构数据，两份快照覆盖范围一致）。
+
+    演示快照可能不存在 —— `reset_data.py --all` 会把它们删掉，用户要的就是
+    一个完全空的环境。这里不守卫的话，api_data 会抛 FileNotFoundError，
+    面板 boot() 整个中断，所有按钮都绑不上事件（实测踩到过）。
+    export_real_changes 早就有这个守卫，这里漏了。
+    """
+    a = DATA / "competitors_2026-09-10.csv"
+    b = DATA / "competitors_2026-09-11.csv"
+    if not (a.exists() and b.exists()):
+        return None
+    changes, warning = compare_snapshots(str(a), str(b))
     return {
         "warning": warning,
         "items": [{

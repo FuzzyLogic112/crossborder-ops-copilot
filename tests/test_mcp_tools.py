@@ -8,6 +8,10 @@ from mcp_server import tools as t
 from src.ingest import ingest_csv
 
 DATA = Path(__file__).parent.parent / "data"
+# 测试自带数据。不能用 data/ 下的文件——那是用户数据，
+# `reset_data.py --all` 会清空它，清完跑测试会一片红。
+FIXTURES = Path(__file__).parent / "fixtures"
+
 
 
 @pytest.fixture(autouse=True)
@@ -15,8 +19,8 @@ def isolated_db(tmp_path, monkeypatch):
     """每个测试用独立的临时 SQLite 库，不污染项目正式的 data/history.db。"""
     db_path = str(tmp_path / "history.db")
     monkeypatch.setattr(t, "DB_PATH", db_path)
-    ingest_csv(str(DATA / "competitors_2026-09-10.csv"), "2026-09-10", db_path)
-    ingest_csv(str(DATA / "competitors_2026-09-11.csv"), "2026-09-11", db_path)
+    ingest_csv(str(FIXTURES / "snapshot_day1.csv"), "2026-09-10", db_path)
+    ingest_csv(str(FIXTURES / "snapshot_day2.csv"), "2026-09-11", db_path)
     return db_path
 
 
