@@ -33,3 +33,4 @@ data/inbox/*.xls
 docs/data.local.json
 
 data/products.backup-*.csv
+data/suppliers.backup-*.csv

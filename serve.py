@@ -36,6 +36,9 @@ sys.path.insert(0, str(BASE))
 from src.calculator import load_products, load_yaml, score_all, calculate_unit_profit  # noqa: E402
 from src.monitor import compare_snapshots                                              # noqa: E402
 from src.ingest import ingest_csv, query_snapshot_dates                                # noqa: E402
+from src.sourcing import (SupplierQuote, compare_quotes, compare_summary,      # noqa: E402
+                          load_quotes, save_quotes, KNOWN_PLATFORMS,
+                          DEFAULT_VAT_RATE, QUOTE_COLUMNS, _parse_tiers, _as_bool, _as_float)
 
 # ── 抓取约束 ──
 # 站点是严格白名单。类目 slug 各站不同（例：玩具在美国站是 toys-and-games 而不是 toys），
@@ -86,6 +89,7 @@ def api_health():
             "monitor": True,
             "workflow": True,
             "listing_prompt": True,
+            "supplier_compare": True,
             "score": True,
             "profit": True,
         },
@@ -519,12 +523,157 @@ def api_snapshot_rows(body):
     return {"snapshot": path, "count": len(rows), "rows": rows}
 
 
+# ── 供应商报价与比价 ──
+# 说明：不抓取任何供货平台。实测 1688 / Alibaba / 义乌购 / DHgate 的价格全在
+# 登录墙或反爬后面（1688 正文仅返回 97 字符、AliExpress 撞 Sign in 墙），
+# 且项目边界规定遇到登录墙即停止自动访问。报价靠人工录入或平台自己的导出文件。
+
+QUOTES_FILE = DATA / "suppliers.csv"
+
+
+def api_quotes_get():
+    quotes = load_quotes(str(QUOTES_FILE))
+    return {
+        "columns": QUOTE_COLUMNS,
+        "platforms": KNOWN_PLATFORMS,
+        "vat_rate": DEFAULT_VAT_RATE,
+        "count": len(quotes),
+        "rows": [{
+            "sku": q.sku, "platform": q.platform, "supplier": q.supplier,
+            "unit_price": q.unit_price, "moq": q.moq,
+            "tax_included": q.tax_included, "freight_included": q.freight_included,
+            "domestic_freight": q.domestic_freight, "sample_fee": q.sample_fee,
+            "mold_fee": q.mold_fee, "lead_days": q.lead_days,
+            "tiers": ";".join("%d:%s" % (a, b) for a, b in q.tiers),
+            "url": q.url, "quoted_date": q.quoted_date, "notes": q.notes,
+        } for q in quotes],
+        "note": "本工具不抓取供货平台报价——那些价格在登录墙后面，且多为「面议」。"
+                "报价请人工录入，或从平台自己的导出文件导入。",
+    }
+
+
+def _row_to_quote(r):
+    return SupplierQuote(
+        sku=str(r.get("sku", "")).strip(),
+        platform=str(r.get("platform", "") or "其他").strip(),
+        supplier=str(r.get("supplier", "")).strip(),
+        unit_price=_as_float(r.get("unit_price")),
+        moq=max(1, int(_as_float(r.get("moq"), 1))),
+        tax_included=_as_bool(r.get("tax_included"), True),
+        freight_included=_as_bool(r.get("freight_included"), False),
+        domestic_freight=_as_float(r.get("domestic_freight")),
+        sample_fee=_as_float(r.get("sample_fee")),
+        mold_fee=_as_float(r.get("mold_fee")),
+        lead_days=int(_as_float(r.get("lead_days"))) if str(r.get("lead_days") or "").strip() else None,
+        tiers=_parse_tiers(r.get("tiers")),
+        url=str(r.get("url", "")).strip(),
+        quoted_date=str(r.get("quoted_date", "")).strip(),
+        notes=str(r.get("notes", "")).strip(),
+    )
+
+
+def api_quotes_save(body):
+    rows = body.get("rows")
+    if not isinstance(rows, list):
+        raise ValueError("rows 必须是数组")
+    quotes = []
+    for i, r in enumerate(rows):
+        if not str(r.get("sku", "")).strip():
+            raise ValueError("第 %d 行缺少 sku" % (i + 1))
+        if _as_float(r.get("unit_price")) <= 0:
+            raise ValueError("第 %d 行（%s / %s）单价必须大于 0"
+                             % (i + 1, r.get("platform"), r.get("supplier")))
+        quotes.append(_row_to_quote(r))
+
+    backup = None
+    if QUOTES_FILE.exists():
+        backup = DATA / ("suppliers.backup-%s.csv" % datetime.now().strftime("%Y%m%d-%H%M%S"))
+        backup.write_bytes(QUOTES_FILE.read_bytes())
+    n = save_quotes(quotes, str(QUOTES_FILE))
+    return {"saved": n, "backup": backup.name if backup else None}
+
+
+def api_compare_suppliers(body):
+    """比价。报价可以直接传进来（未保存也能比），不传就读文件里该 SKU 的全部报价。"""
+    sku = str(body.get("sku", "")).strip()
+    qty = int(_as_float(body.get("order_qty"), 0))
+    if qty <= 0:
+        raise ValueError("order_qty 必须大于 0")
+    need_invoice = bool(body.get("need_invoice"))
+    vat = _as_float(body.get("vat_rate"), DEFAULT_VAT_RATE)
+
+    inline = body.get("quotes")
+    if isinstance(inline, list) and inline:
+        quotes = [_row_to_quote(r) for r in inline]
+    else:
+        if not sku:
+            raise ValueError("需要 sku（或直接传 quotes）")
+        quotes = [q for q in load_quotes(str(QUOTES_FILE)) if q.sku == sku]
+    if not quotes:
+        return {"ok": False, "reason": "没有找到 %s 的报价" % (sku or "该商品")}
+
+    results = compare_quotes(quotes, qty, need_invoice=need_invoice, vat_rate=vat)
+    return {
+        "ok": True,
+        "order_qty": qty, "need_invoice": need_invoice, "vat_rate": vat,
+        "summary": compare_summary(results),
+        "results": [{
+            "platform": r.quote.platform, "supplier": r.quote.supplier,
+            "unit_price": r.quote.unit_price, "moq": r.quote.moq,
+            "tax_included": r.quote.tax_included,
+            "freight_included": r.quote.freight_included,
+            "lead_days": r.quote.lead_days,
+            "actual_qty": r.actual_qty, "tier_price": r.tier_price,
+            "taxed_price": r.taxed_price,
+            "freight_per_unit": r.freight_per_unit,
+            "oneoff_per_unit": r.oneoff_per_unit,
+            "landed_unit_cost": r.landed_unit_cost,
+            "moq_shortfall": r.moq_shortfall,
+            "warnings": r.warnings, "url": r.quote.url,
+            "quoted_date": r.quote.quoted_date, "notes": r.quote.notes,
+        } for r in results],
+    }
+
+
+def api_apply_cost(body):
+    """把选中的到仓成本单价写回 products.csv 的 cost_price —— 打通比价到选品评分。"""
+    import csv as _csv
+    sku = str(body.get("sku", "")).strip()
+    cost = _as_float(body.get("cost_price"), -1)
+    if not sku:
+        raise ValueError("需要 sku")
+    if cost <= 0:
+        raise ValueError("cost_price 必须大于 0")
+
+    f = DATA / "products.csv"
+    if not f.exists():
+        raise ValueError("products.csv 不存在，请先在选品工作台建立候选品")
+    rows = list(_csv.DictReader(f.open(encoding="utf-8-sig")))
+    hit = False
+    for r in rows:
+        if r.get("sku") == sku:
+            r["cost_price"] = cost
+            hit = True
+    if not hit:
+        raise ValueError("products.csv 里没有 SKU %s —— 请先在选品工作台加入该候选品" % sku)
+
+    backup = DATA / ("products.backup-%s.csv" % datetime.now().strftime("%Y%m%d-%H%M%S"))
+    backup.write_bytes(f.read_bytes())
+    with f.open("w", newline="", encoding="utf-8-sig") as fh:
+        w = _csv.DictWriter(fh, fieldnames=PRODUCT_COLUMNS)
+        w.writeheader()
+        w.writerows([{k: r.get(k, "") for k in PRODUCT_COLUMNS} for r in rows])
+    return {"sku": sku, "cost_price": cost, "backup": backup.name,
+            "note": "已写入采购价。到「选品工作台」第③步或「选品评分」页看重算后的结果。"}
+
+
 ROUTES_GET = {
     "/api/health": lambda q: api_health(),
     "/api/data": lambda q: api_data(),
     "/api/snapshots": lambda q: api_snapshots(),
     "/api/job": lambda q: api_job(q.get("id", [""])[0]),
     "/api/products": lambda q: api_products_get(),
+    "/api/quotes": lambda q: api_quotes_get(),
 }
 ROUTES_POST = {
     "/api/profit": api_profit,
@@ -536,6 +685,9 @@ ROUTES_POST = {
     "/api/products/save": api_products_save,
     "/api/candidates": api_candidates_from_snapshot,
     "/api/snapshot-rows": api_snapshot_rows,
+    "/api/quotes/save": api_quotes_save,
+    "/api/compare-suppliers": api_compare_suppliers,
+    "/api/apply-cost": api_apply_cost,
 }
 
 

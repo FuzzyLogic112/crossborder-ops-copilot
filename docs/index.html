@@ -113,6 +113,7 @@
   <button data-tab="calc" aria-selected="true">定价计算器</button>
   <button data-tab="score" aria-selected="false">选品评分</button>
   <button data-tab="bench" aria-selected="false">选品工作台</button>
+  <button data-tab="src" aria-selected="false">供应商比价</button>
   <button data-tab="comp" aria-selected="false">竞品数据</button>
   <button data-tab="listing" aria-selected="false">文案生成</button>
   <button data-tab="ops" aria-selected="false">抓取与工作流</button>
@@ -290,6 +291,73 @@
     <h2>③ 评分结果</h2>
     <p class="note">保存后自动重算。缺采购价或计划售价的品会被判为无法测算。</p>
     <div class="tblwrap"><table id="bh_score"></table></div>
+  </div>
+</section>
+
+<!-- ── 供应商比价 ── -->
+<section id="tab-src" class="hide">
+  <div class="card">
+    <h2>为什么不能直接比标价</h2>
+    <p class="note">
+      <code>¥38/件 · MOQ 1000 · 不含税 · 不含运</code> 和
+      <code>¥42/件 · MOQ 100 · 含税 · 含运</code> 哪个便宜？
+      <strong>你只要 200 件时，前者根本买不到</strong>；就算买得到，加上税和国内运费后可能更贵。
+    </p>
+    <p class="note" style="margin-top:6px">
+      真正可比的是 <strong>到仓成本单价</strong>：
+      <code>适用阶梯单价（按需含税）＋（国内运费 ＋ 打样费 ＋ 模具费）÷ 实际采购量</code>
+    </p>
+    <div class="cap">
+      <strong>本工具不抓取供货平台报价。</strong>实测 1688、阿里巴巴国际站、义乌购、DHgate
+      的价格全在登录墙或反爬后面（1688 正文只返回 97 字符，AliExpress 撞 Sign in 墙），
+      而且 B2B 采购价大量是「面议」——<strong>那本来就是谈出来的，不是挂出来的</strong>。
+      报价请人工录入，或从平台自己的导出文件导入。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>① 录入各平台报价</h2>
+    <div id="src_mode"></div>
+    <div class="row2">
+      <div><label for="src_sku">给哪个候选品比价</label><select id="src_sku"></select></div>
+      <div><label for="src_qty">你的采购量（件）</label><input id="src_qty" type="number" min="1" value="300"></div>
+    </div>
+    <div class="row2">
+      <div><label for="src_inv">需要增值税专用发票吗</label>
+        <select id="src_inv">
+          <option value="0">不需要（不含税报价按原价用）</option>
+          <option value="1">需要（不含税报价要加税，出口退税通常需要）</option>
+        </select></div>
+      <div><label for="src_vat">增值税率</label><input id="src_vat" type="number" step="0.01" value="0.13"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap">
+      <button id="src_add" class="btn ghost">＋ 加一条报价</button>
+      <button id="src_save" class="btn ghost">保存报价库</button>
+      <button id="src_cmp" class="btn">比价</button>
+    </div>
+    <div class="tblwrap"><table id="src_tbl"></table></div>
+    <p class="note" id="src_status"></p>
+  </div>
+
+  <div class="card">
+    <h2>② 到仓成本对比</h2>
+    <div id="src_summary"></div>
+    <div class="tblwrap"><table id="src_result"></table></div>
+    <div id="src_warn"></div>
+  </div>
+
+  <div class="card">
+    <h2>③ 用选中的报价作为采购价</h2>
+    <p class="note">写入 <code>data/products.csv</code> 的 <code>cost_price</code>，打通到选品评分。写前自动备份。</p>
+    <div class="row2">
+      <div><label for="src_pick">选一个供应商</label><select id="src_pick"></select></div>
+      <div><label for="src_cost">到仓成本单价 ¥</label><input id="src_cost" type="number" step="0.01" readonly></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="src_apply" class="btn">写入采购价并重新评分</button>
+    </div>
+    <p class="note" id="src_apply_status"></p>
+    <div class="tblwrap"><table id="src_score"></table></div>
   </div>
 </section>
 
@@ -807,7 +875,7 @@ function selfCheck(){
 $("nav").addEventListener("click", e=>{
   const b = e.target.closest("button"); if (!b) return;
   [...$("nav").children].forEach(x=>x.setAttribute("aria-selected", x===b));
-  ["calc","score","bench","comp","listing","ops","store","about"].forEach(t=>
+  ["calc","score","bench","src","comp","listing","ops","store","about"].forEach(t=>
     $("tab-"+t).classList.toggle("hide", t !== b.dataset.tab));
 });
 
@@ -1012,6 +1080,272 @@ function initBench(){
   });
 }
 
+
+/* ═══════════ 供应商比价 ═══════════ */
+let SRC = { quotes: [], platforms: [], lastResults: [] };
+
+const Q_COLS = [
+  ["platform","平台",  "select"],
+  ["supplier","供应商", "text"],
+  ["unit_price","标价¥","num"],
+  ["moq","MOQ",       "num"],
+  ["tiers","阶梯价",   "text"],
+  ["tax_included","含税","bool"],
+  ["freight_included","含运","bool"],
+  ["domestic_freight","国内运费¥","num"],
+  ["sample_fee","打样费¥","num"],
+  ["mold_fee","模具费¥","num"],
+  ["lead_days","交期天","num"],
+  ["quoted_date","报价日","text"],
+];
+
+function renderSrcMode(){
+  $("src_mode").innerHTML = LOCAL
+    ? `<div class="cap ok"><strong>本地服务已连接</strong> —— 报价存在 <code>data/suppliers.csv</code>（保存前自动备份）。</div>`
+    : `<div class="cap"><strong>比价需要本地服务</strong>才能读写报价库与写回采购价。
+        不过<strong>算法本身在本页就能跑</strong> —— 下面录入的报价会在浏览器里直接算，
+        只是不落盘、也不能写回 <code>products.csv</code>。</div>`;
+  ["src_save","src_apply"].forEach(id=>{ if($(id)) $(id).disabled = !LOCAL; });
+}
+
+async function srcInit(){
+  try{
+    if (LOCAL){
+      const d = await api("/api/quotes");
+      SRC.quotes = d.rows || [];
+      SRC.platforms = d.platforms || [];
+      $("src_vat").value = d.vat_rate;
+      const p = await api("/api/products");
+      $("src_sku").innerHTML = (p.rows||[]).map(r=>
+        `<option value="${esc(r.sku)}">${esc(r.sku)} · ${esc(r.name)}</option>`).join("");
+    } else {
+      SRC.platforms = ["1688","义乌购","阿里巴巴国际站","中国制造网","DHgate",
+                       "拼多多","淘宝","速卖通","线下档口","展会","工厂直联","其他"];
+      SRC.quotes = [];
+      $("src_sku").innerHTML = (D && D.products ? D.products : []).map(p=>
+        `<option value="${esc(p.sku)}">${esc(p.sku)} · ${esc(p.name)}</option>`).join("");
+      if (!SRC.quotes.length) srcSeedDemo();
+    }
+    renderQuotes();
+  }catch(e){ $("src_status").textContent = "初始化失败：" + e.message; }
+}
+
+function srcSeedDemo(){
+  const sku = $("src_sku").value || "DEMO";
+  SRC.quotes = [
+    {sku, platform:"1688", supplier:"示例工厂", unit_price:12.5, moq:1000, tiers:"1000:12.5;3000:11.2",
+     tax_included:false, freight_included:false, domestic_freight:2600, sample_fee:0, mold_fee:800,
+     lead_days:18, quoted_date:"2026-09-12", notes:"示例"},
+    {sku, platform:"1688", supplier:"示例贸易商", unit_price:16.0, moq:100, tiers:"",
+     tax_included:true, freight_included:false, domestic_freight:180, sample_fee:0, mold_fee:0,
+     lead_days:5, quoted_date:"2026-09-12", notes:"示例"},
+    {sku, platform:"义乌购", supplier:"示例档口", unit_price:14.5, moq:200, tiers:"",
+     tax_included:false, freight_included:true, domestic_freight:0, sample_fee:0, mold_fee:0,
+     lead_days:3, quoted_date:"2026-09-12", notes:"示例"},
+  ];
+}
+
+function currentSkuQuotes(){
+  const sku = $("src_sku").value;
+  return SRC.quotes.filter(q=>q.sku === sku);
+}
+
+function renderQuotes(){
+  const sku = $("src_sku").value;
+  const rows = SRC.quotes.map((q,i)=>({q,i})).filter(x=>x.q.sku === sku);
+  if (!rows.length){
+    $("src_tbl").innerHTML = `<tbody><tr><td class="note">还没有 ${esc(sku)} 的报价，点「＋ 加一条报价」开始。</td></tr></tbody>`;
+    return;
+  }
+  let h = "<thead><tr>" + Q_COLS.map(([,l])=>`<th>${l}</th>`).join("") + "<th></th></tr></thead><tbody>";
+  rows.forEach(({q,i})=>{
+    h += "<tr>" + Q_COLS.map(([k,,type])=>{
+      const v = q[k] == null ? "" : q[k];
+      if (type === "select"){
+        return `<td><select class="src_in" data-i="${i}" data-k="${k}" style="width:auto;padding:3px 5px;font-size:12px">
+          ${SRC.platforms.map(o=>`<option${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select></td>`;
+      }
+      if (type === "bool"){
+        return `<td><input type="checkbox" class="src_in" data-i="${i}" data-k="${k}"
+          ${v===true||v==="1"||v===1?"checked":""} style="width:auto"></td>`;
+      }
+      return `<td><input class="src_in" data-i="${i}" data-k="${k}" value="${esc(v)}"
+        ${type==="num"?'type="number" step="0.01"':''}
+        style="width:${k==="tiers"?130:k==="supplier"?100:72}px;padding:3px 6px;font-size:12px"></td>`;
+    }).join("") + `<td><button class="btn ghost src_del" data-i="${i}"
+        style="padding:2px 8px;font-size:12px">删</button></td></tr>`;
+  });
+  $("src_tbl").innerHTML = h + "</tbody>";
+
+  $("src_tbl").querySelectorAll(".src_in").forEach(el=>{
+    const ev = el.type === "checkbox" ? "change" : "input";
+    el.addEventListener(ev, e=>{
+      const t = e.target;
+      SRC.quotes[+t.dataset.i][t.dataset.k] = t.type === "checkbox" ? t.checked : t.value;
+    });
+  });
+  $("src_tbl").querySelectorAll(".src_del").forEach(el=>
+    el.addEventListener("click", e=>{ SRC.quotes.splice(+e.target.dataset.i,1); renderQuotes(); }));
+}
+
+function srcAddRow(){
+  SRC.quotes.push({sku: $("src_sku").value, platform:"1688", supplier:"", unit_price:"",
+    moq:1, tiers:"", tax_included:true, freight_included:false, domestic_freight:0,
+    sample_fee:0, mold_fee:0, lead_days:"", quoted_date:new Date().toISOString().slice(0,10), notes:""});
+  renderQuotes();
+}
+
+/* ── 浏览器端算法：与 src/sourcing.py 保持一致，用于未连本地服务时 ── */
+function jsLandedCost(q, orderQty, needInvoice, vat){
+  const moq = Math.max(1, +q.moq || 1);
+  const actual = Math.max(orderQty, moq);
+  let tier = +q.unit_price || 0;
+  const tiers = String(q.tiers||"").split(/[;，,]/).map(s=>s.trim()).filter(s=>s.includes(":"))
+    .map(s=>{const [a,b]=s.split(":"); return [parseInt(a),parseFloat(b)];})
+    .filter(x=>!isNaN(x[0])&&!isNaN(x[1])).sort((a,b)=>a[0]-b[0]);
+  if (tiers.length){
+    const el = tiers.filter(([m])=>m<=actual);
+    tier = el.length ? el[el.length-1][1] : tiers[0][1];
+  }
+  const taxIncl = q.tax_included===true||q.tax_included==="1"||q.tax_included===1;
+  const frIncl  = q.freight_included===true||q.freight_included==="1"||q.freight_included===1;
+  const taxed = (needInvoice && !taxIncl) ? tier*(1+vat) : tier;
+  const frPer = frIncl ? 0 : (+q.domestic_freight||0)/actual;
+  const onePer = ((+q.sample_fee||0)+(+q.mold_fee||0))/actual;
+  const warnings = [];
+  if (moq > orderQty) warnings.push(`MOQ ${moq} 高于采购量 ${orderQty} —— 实际要买 ${actual} 件，多出 ${moq-orderQty} 件是压货风险`);
+  if (!taxIncl && needInvoice) warnings.push(`报价不含税，按需要专票计入 ${(vat*100).toFixed(0)}% 增值税`);
+  if (!taxIncl && !needInvoice) warnings.push("报价不含税，当前按「不需要专票」处理 —— 若要出口退税需重算");
+  if (!frIncl && !(+q.domestic_freight)) warnings.push("标为不含运费但国内运费填 0 —— 到仓成本可能被低估");
+  if (!q.quoted_date) warnings.push("没有报价日期 —— 报价会变，无日期的报价不能作为决策依据");
+  if (+q.lead_days > 30) warnings.push(`交期 ${q.lead_days} 天偏长，注意断货与资金占用风险`);
+  return {platform:q.platform, supplier:q.supplier, unit_price:+q.unit_price||0, moq,
+    tax_included:taxIncl, freight_included:frIncl, lead_days:q.lead_days,
+    actual_qty:actual, tier_price:+tier.toFixed(4), taxed_price:+taxed.toFixed(4),
+    freight_per_unit:+frPer.toFixed(4), oneoff_per_unit:+onePer.toFixed(4),
+    landed_unit_cost:+(taxed+frPer+onePer).toFixed(4),
+    moq_shortfall:Math.max(0,moq-orderQty), warnings, quoted_date:q.quoted_date, notes:q.notes};
+}
+
+async function srcCompare(){
+  const qty = +$("src_qty").value || 0;
+  if (qty <= 0){ $("src_status").textContent = "采购量必须大于 0。"; return; }
+  const needInv = $("src_inv").value === "1";
+  const vat = +$("src_vat").value || 0.13;
+  const rows = currentSkuQuotes();
+  if (!rows.length){ $("src_status").textContent = "先录入至少一条报价。"; return; }
+
+  try{
+    let res, summary;
+    if (LOCAL){
+      const r = await api("/api/compare-suppliers", {
+        sku: $("src_sku").value, order_qty: qty,
+        need_invoice: needInv, vat_rate: vat, quotes: rows});
+      if (!r.ok){ $("src_status").textContent = r.reason; return; }
+      res = r.results; summary = r.summary;
+      $("src_status").innerHTML = `由服务端 <code>src/sourcing.py</code> 计算（${res.length} 条报价）`;
+    } else {
+      res = rows.map(q=>jsLandedCost(q, qty, needInv, vat))
+                .sort((a,b)=>a.landed_unit_cost-b.landed_unit_cost || a.actual_qty-b.actual_qty);
+      const cheapSticker = res.reduce((m,x)=>x.unit_price<m.unit_price?x:m, res[0]);
+      summary = {winner:res[0], count:res.length,
+        gap_to_second: res[1] ? +(res[1].landed_unit_cost-res[0].landed_unit_cost).toFixed(4) : null,
+        gap_pct: res[1] ? +((res[1].landed_unit_cost-res[0].landed_unit_cost)/res[0].landed_unit_cost*100).toFixed(2) : null,
+        sticker_trap: cheapSticker!==res[0]
+          ? `${cheapSticker.platform} 的${cheapSticker.supplier}标价最低（¥${cheapSticker.unit_price}/件），但到仓成本 ¥${cheapSticker.landed_unit_cost} 反而更高；${res[0].platform} 的${res[0].supplier}标价 ¥${res[0].unit_price}、到仓 ¥${res[0].landed_unit_cost} 才是更优选择。直接比标价会选错。`
+          : null,
+        moq_note: res.filter(x=>x.moq_shortfall).length
+          ? `${res.filter(x=>x.moq_shortfall).length} 个报价的 MOQ 高于你的采购量，选它们意味着压货` : null};
+      $("src_status").innerHTML = `在浏览器里计算（未连本地服务，${res.length} 条报价）`;
+    }
+    SRC.lastResults = res;
+    renderCompare(res, summary, qty);
+  }catch(e){ $("src_status").textContent = "比价失败：" + e.message; }
+}
+
+function renderCompare(res, s, qty){
+  const w = s.winner || res[0];
+  $("src_summary").innerHTML =
+    `<div class="cap ok"><strong>最优：${esc(w.platform)} / ${esc(w.supplier||"—")}</strong>，
+      到仓成本 <strong>¥${(w.landed_unit_cost||0).toFixed(2)}/件</strong>（采购 ${qty} 件，实买 ${w.actual_qty} 件）`
+    + (s.gap_to_second != null ? `，比第二名便宜 ¥${s.gap_to_second.toFixed(2)}（${s.gap_pct}%）` : "")
+    + `</div>`
+    + (s.sticker_trap ? `<div class="cap"><strong>⚠ 标价陷阱：</strong>${esc(s.sticker_trap)}</div>` : "")
+    + (s.moq_note ? `<div class="cap"><strong>⚠ ${esc(s.moq_note)}</strong></div>` : "");
+
+  let h = `<thead><tr><th class="num">#</th><th>平台</th><th>供应商</th>
+    <th class="num">标价¥</th><th class="num">MOQ</th><th class="num">实买</th>
+    <th class="num">含税价¥</th><th class="num">运费/件</th><th class="num">一次性/件</th>
+    <th class="num">到仓单价¥</th><th class="num">交期</th></tr></thead><tbody>`;
+  res.forEach((x,i)=>{
+    h += `<tr${i===0?' style="background:var(--accent-soft)"':''}>
+      <td class="num">${i+1}${i===0?" ★":""}</td>
+      <td>${esc(x.platform)}</td><td class="ttl">${esc(x.supplier||"—")}</td>
+      <td class="num">${x.unit_price.toFixed(2)}</td>
+      <td class="num">${x.moq}</td>
+      <td class="num${x.moq_shortfall?' ':''}" ${x.moq_shortfall?'style="color:var(--warn);font-weight:600"':''}>${x.actual_qty}</td>
+      <td class="num">${x.taxed_price.toFixed(2)}</td>
+      <td class="num">${x.freight_per_unit.toFixed(2)}</td>
+      <td class="num">${x.oneoff_per_unit.toFixed(2)}</td>
+      <td class="num"><strong>${x.landed_unit_cost.toFixed(2)}</strong></td>
+      <td class="num">${x.lead_days || "—"}</td></tr>`;
+  });
+  $("src_result").innerHTML = h + "</tbody>";
+
+  const warned = res.filter(x=>x.warnings && x.warnings.length);
+  $("src_warn").innerHTML = warned.length
+    ? warned.map(x=>`<p class="note"><strong>${esc(x.platform)} / ${esc(x.supplier||"—")}：</strong>`
+        + x.warnings.map(esc).join("；") + "</p>").join("")
+    : "";
+
+  $("src_pick").innerHTML = res.map((x,i)=>
+    `<option value="${i}">${esc(x.platform)} / ${esc(x.supplier||"—")} — 到仓 ¥${x.landed_unit_cost.toFixed(2)}</option>`).join("");
+  $("src_cost").value = res[0].landed_unit_cost.toFixed(2);
+  $("src_pick").onchange = ()=>{
+    $("src_cost").value = res[+$("src_pick").value].landed_unit_cost.toFixed(2);
+  };
+}
+
+async function srcSave(){
+  try{
+    const r = await api("/api/quotes/save", {rows: SRC.quotes});
+    $("src_status").innerHTML = `✓ 已保存 <strong>${r.saved}</strong> 条报价`
+      + (r.backup ? `（旧文件备份为 <code>${esc(r.backup)}</code>）` : "");
+  }catch(e){ $("src_status").textContent = "保存失败：" + e.message; }
+}
+
+async function srcApply(){
+  const cost = +$("src_cost").value;
+  if (!(cost > 0)){ $("src_apply_status").textContent = "先比价，再选供应商。"; return; }
+  try{
+    const r = await api("/api/apply-cost", {sku: $("src_sku").value, cost_price: cost});
+    $("src_apply_status").innerHTML = `✓ 已把 <strong>¥${cost.toFixed(2)}</strong> 写入 `
+      + `<code>${esc(r.sku)}</code> 的采购价（备份 <code>${esc(r.backup)}</code>）`;
+    const rows = await api("/api/score", {platform:"tiktok_shop", market:"US", scenario:"standard"});
+    let h = `<thead><tr><th>SKU</th><th>名称</th><th class="num">总分</th>
+      <th class="num">利润分</th><th>淘汰</th><th>原因</th></tr></thead><tbody>`;
+    rows.forEach(x=>{
+      const hit = x.sku === r.sku;
+      h += `<tr class="${x.eliminated?"out":""}"${hit?' style="background:var(--accent-soft)"':''}>
+        <td>${esc(x.sku)}${hit?" ←":""}</td><td class="ttl">${esc(x.name)}</td>
+        <td class="num"><strong>${(x.total_score||0).toFixed(2)}</strong></td>
+        <td class="num">${(x.profit_score||0).toFixed(2)}</td>
+        <td>${x.eliminated?"是":"否"}</td>
+        <td class="why">${esc(x.eliminate_reason||"")}</td></tr>`;
+    });
+    $("src_score").innerHTML = h + "</tbody>";
+    try{ D = await api("/api/data"); renderScore(); initCalcPresets(); }catch(e){}
+  }catch(e){ $("src_apply_status").textContent = "写入失败：" + e.message; }
+}
+
+function initSourcing(){
+  $("src_add").addEventListener("click", srcAddRow);
+  $("src_save").addEventListener("click", srcSave);
+  $("src_cmp").addEventListener("click", srcCompare);
+  $("src_apply").addEventListener("click", srcApply);
+  $("src_sku").addEventListener("change", renderQuotes);
+}
+
 /* ═══════════ 本地服务探测 ═══════════ */
 let LOCAL = null;   // null = 未连接；否则是 {base, health}
 
@@ -1083,6 +1417,7 @@ function renderModeBanner(){
         在项目目录运行 <code>python serve.py --open</code>，用它打开的地址访问面板即可解锁。</div>`);
 
   renderBenchMode();
+  renderSrcMode();
   const dis = !on;
   ["sc_run","mo_run","wf_run"].forEach(id=>{ if($(id)) $(id).disabled = dis; });
   if ($("sc_run")) $("sc_run").disabled = !scrape;
@@ -1391,7 +1726,9 @@ fetch("data.local.json")
   $("sscen").addEventListener("change", renderScore);
   initOps();
   initBench();
-  probeLocal().then(l=>{ LOCAL = l; renderModeBanner(); loadSnapshots(); benchInitSnaps(); });
+  initSourcing();
+  probeLocal().then(l=>{ LOCAL = l; renderModeBanner(); loadSnapshots();
+    benchInitSnaps(); srcInit(); });
 }).catch(err=>{
   document.querySelector(".wrap").insertAdjacentHTML("afterbegin",
     '<div class="cap"><strong>读不到 data.json。</strong>请先运行 '
