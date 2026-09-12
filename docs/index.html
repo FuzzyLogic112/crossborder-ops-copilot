@@ -112,6 +112,7 @@
 <nav id="nav">
   <button data-tab="calc" aria-selected="true">定价计算器</button>
   <button data-tab="score" aria-selected="false">选品评分</button>
+  <button data-tab="bench" aria-selected="false">选品工作台</button>
   <button data-tab="comp" aria-selected="false">竞品数据</button>
   <button data-tab="listing" aria-selected="false">文案生成</button>
   <button data-tab="ops" aria-selected="false">抓取与工作流</button>
@@ -226,6 +227,69 @@
     <h2>竞品快照 <span id="compsrc" class="badge"></span></h2>
     <p class="note" id="compnote"></p>
     <div class="tblwrap"><table id="ctbl"></table></div>
+  </div>
+</section>
+
+<!-- ── 选品工作台 ── -->
+<section id="tab-bench" class="hide">
+  <div class="card">
+    <h2>① 从真实竞品里挑候选品</h2>
+    <div id="bench_mode"></div>
+    <div class="row2">
+      <div><label for="bh_snap">选一份竞品快照</label><select id="bh_snap"></select></div>
+      <div><label for="bh_cat">归到哪个类目（影响退货率）</label>
+        <input id="bh_cat" list="catlist2" value="pet_supplies">
+        <datalist id="catlist2">
+          <option value="pet_supplies"><option value="home_organization">
+          <option value="electronics_accessory"><option value="baby_safety">
+          <option value="beauty_health"><option value="outdoor">
+        </datalist>
+      </div>
+    </div>
+    <div class="row2">
+      <div><label for="bh_mkt">平台所在市场</label>
+        <select id="bh_mkt"><option>US</option><option>EU</option><option>JP</option><option>UK</option></select></div>
+      <div><label for="bh_fx">汇率（当地货币 → 人民币）</label>
+        <input id="bh_fx" type="number" step="0.0001" value="7.1"></div>
+    </div>
+    <div class="cap">
+      <strong>⚠️ 币种必须换算。</strong>抓来的售价是平台当地货币，而成本模型以人民币计价
+      （采购价来自 1688、物流是国内货代报价）。两者直接相减会得出<strong>完全错误</strong>的结论 ——
+      22.99 美元的品，若当成 22.99 元去减 42 元采购价，会被误判为亏本淘汰。
+      <br><strong>这里的默认汇率是占位量级，不是实时汇率，请自行核实当日汇率后修改。</strong>
+    </div>
+    <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap">
+      <button id="bh_load" class="btn ghost">加载快照</button>
+      <button id="bh_add" class="btn">把勾选的加入候选</button>
+      <span class="badge" id="bh_count">已勾选 0 个</span>
+    </div>
+    <div class="tblwrap" style="max-height:340px;overflow:auto">
+      <table id="bh_tbl"></table>
+    </div>
+    <p class="note" id="bh_status"></p>
+  </div>
+
+  <div class="card">
+    <h2>② 补齐抓不到的字段</h2>
+    <div class="cap">
+      <strong>这几列抓取拿不到，只能你自己填：</strong>
+      采购价 / 包装 / 重量 / 体积是<strong>供应链数据</strong>——去 1688、阿里巴巴找同款问供应商报价；
+      需求 / 缺口 / 物流 / 内容四项打分是<strong>运营自己的判断</strong>，系统不代填。
+      <br>计划售价已用竞品售价预填，这是「对标定价」的起点，可以改。
+    </div>
+    <div class="tblwrap"><table id="bh_edit"></table></div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button id="bh_save" class="btn">保存到 products.csv 并重新评分</button>
+      <button id="bh_reload" class="btn ghost">放弃修改，重新读取</button>
+      <button id="bh_demo" class="btn ghost">填入示例数值（仅用于快速试跑）</button>
+    </div>
+    <p class="note" id="bh_save_status"></p>
+  </div>
+
+  <div class="card">
+    <h2>③ 评分结果</h2>
+    <p class="note">保存后自动重算。缺采购价或计划售价的品会被判为无法测算。</p>
+    <div class="tblwrap"><table id="bh_score"></table></div>
   </div>
 </section>
 
@@ -743,11 +807,210 @@ function selfCheck(){
 $("nav").addEventListener("click", e=>{
   const b = e.target.closest("button"); if (!b) return;
   [...$("nav").children].forEach(x=>x.setAttribute("aria-selected", x===b));
-  ["calc","score","comp","listing","ops","store","about"].forEach(t=>
+  ["calc","score","bench","comp","listing","ops","store","about"].forEach(t=>
     $("tab-"+t).classList.toggle("hide", t !== b.dataset.tab));
 });
 
 /* ───── 启动 ───── */
+
+
+/* ═══════════ 选品工作台 ═══════════ */
+let BENCH = { snapRows: [], editRows: [], manual: [] };
+
+const EDIT_COLS = [
+  ["sku","SKU",0], ["name","名称",0], ["category","类目",0],
+  ["cost_price","采购价¥*",1], ["packaging_cost","包装¥*",1],
+  ["weight_kg","重量kg*",1], ["volume_l","体积L*",1],
+  ["planned_price","计划售价¥",1],
+  ["demand_score","需求/25*",1], ["gap_score","缺口/20*",1],
+  ["logistics_score","物流/15*",1], ["content_score","内容/10*",1],
+  ["compliance_flag","合规",0],
+];
+
+function renderBenchMode(){
+  $("bench_mode").innerHTML = LOCAL
+    ? `<div class="cap ok"><strong>本地服务已连接</strong> —— 可读写 <code>data/products.csv</code>（每次保存前自动备份）。</div>`
+    : `<div class="cap"><strong>选品工作台需要本地服务。</strong>
+        它要读真实快照、写 <code>products.csv</code>，网页自己做不到。
+        在项目目录运行 <code>python serve.py --open</code>，用它打开的地址访问面板。</div>`;
+  ["bh_load","bh_add","bh_save","bh_reload","bh_demo"].forEach(id=>{
+    if ($(id)) $(id).disabled = !LOCAL; });
+}
+
+async function benchInitSnaps(){
+  if (!LOCAL) return;
+  try{
+    const r = await api("/api/snapshots");
+    const real = (r.snapshots||[]).filter(s=>s.real);
+    const list = real.length ? real : (r.snapshots||[]);
+    $("bh_snap").innerHTML = list.map(s=>
+      `<option value="${esc(s.path)}">${esc(s.name)} · ${s.rows} 行${s.real?" · 真实":""}</option>`).join("");
+    const p = await api("/api/products");
+    BENCH.manual = p.manual_only || [];
+    BENCH.editRows = (p.rows||[]).map(r=>({...r}));
+    renderEdit();
+    await benchScore();
+  }catch(e){ $("bh_status").textContent = "初始化失败：" + e.message; }
+}
+
+async function benchLoadSnap(){
+  $("bh_status").textContent = "加载中…";
+  try{
+    const r = await api("/api/snapshot-rows", {snapshot: $("bh_snap").value});
+    BENCH.snapRows = r.rows || [];
+    $("bh_status").innerHTML = `已加载 <strong>${r.count}</strong> 行真实竞品数据。勾选你想做的品。`;
+    let h = `<thead><tr><th style="width:34px"></th><th class="num">排名</th><th>ASIN</th>
+      <th>标题</th><th class="num">售价</th><th class="num">评分</th><th class="num">评价数</th></tr></thead><tbody>`;
+    BENCH.snapRows.forEach((c,i)=>{
+      h += `<tr><td><input type="checkbox" class="bh_ck" data-i="${i}" style="width:auto"></td>
+        <td class="num">${esc(c.rank||"—")}</td><td>${esc(c.item_id)}</td>
+        <td class="ttl">${esc(c.title)}</td>
+        <td class="num">${Number(c.price).toFixed(2)}</td>
+        <td class="num">${esc(c.rating)}</td>
+        <td class="num">${Number(c.review_count||0).toLocaleString()}</td></tr>`;
+    });
+    $("bh_tbl").innerHTML = h + "</tbody>";
+    $("bh_tbl").querySelectorAll(".bh_ck").forEach(x=>
+      x.addEventListener("change", ()=>{
+        $("bh_count").textContent = "已勾选 " + $("bh_tbl").querySelectorAll(".bh_ck:checked").length + " 个";
+      }));
+    $("bh_count").textContent = "已勾选 0 个";
+  }catch(e){ $("bh_status").textContent = "失败：" + e.message; }
+}
+
+async function benchAdd(){
+  const picked = [...$("bh_tbl").querySelectorAll(".bh_ck:checked")]
+    .map(x=>BENCH.snapRows[+x.dataset.i].item_id);
+  if (!picked.length){ $("bh_status").textContent = "先勾选至少一个品。"; return; }
+  try{
+    const r = await api("/api/candidates", {
+      snapshot: $("bh_snap").value, item_ids: picked,
+      category: $("bh_cat").value.trim(),
+      market: $("bh_mkt").value, fx_rate: +$("bh_fx").value || undefined});
+    const have = new Set(BENCH.editRows.map(x=>x.sku));
+    let added = 0;
+    (r.candidates||[]).forEach(c=>{ if (!have.has(c.sku)){ BENCH.editRows.push(c); added++; } });
+    const ex = (r.candidates||[])[0];
+    $("bh_status").innerHTML = `已加入 <strong>${added}</strong> 个候选`
+      + (added < picked.length ? `（${picked.length-added} 个已存在，跳过）` : "")
+      + (ex && ex._local_price != null
+          ? `。计划售价已按汇率 <strong>${r.fx_rate}</strong> 换算成人民币`
+            + `（例：${ex._local_price} ${esc(r.currency)} → ¥${ex.planned_price}）`
+          : "")
+      + `。<strong>下一步到第 ② 步补齐采购价与重量</strong> —— 那是抓不到的。`;
+    renderEdit();
+  }catch(e){ $("bh_status").textContent = "失败：" + e.message; }
+}
+
+function renderEdit(){
+  if (!BENCH.editRows.length){
+    $("bh_edit").innerHTML = "";
+    return;
+  }
+  let h = "<thead><tr>" + EDIT_COLS.map(([k,label])=>{
+    const need = BENCH.manual.includes(k);
+    return `<th${need?' style="color:var(--warn)"':''}>${label}</th>`;
+  }).join("") + "<th></th></tr></thead><tbody>";
+  BENCH.editRows.forEach((r,i)=>{
+    h += "<tr>" + EDIT_COLS.map(([k,,editable])=>{
+      const v = r[k] == null ? "" : r[k];
+      if (k === "compliance_flag"){
+        return `<td><select data-i="${i}" data-k="${k}" class="bh_in" style="width:auto;padding:3px 6px;font-size:12px">
+          ${["ok","review_needed","banned"].map(o=>`<option${o===v?" selected":""}>${o}</option>`).join("")}
+        </select></td>`;
+      }
+      if (!editable) return `<td>${esc(v)}</td>`;
+      const empty = v === "" || v === null;
+      return `<td><input class="bh_in" data-i="${i}" data-k="${k}" value="${esc(v)}"
+        ${k.endsWith("_score")||k.endsWith("_price")||k.endsWith("_kg")||k.endsWith("_l")||k.endsWith("_cost")?'type="number" step="0.01"':''}
+        style="width:74px;padding:3px 6px;font-size:12px${empty?";border-color:var(--warn)":""}"></td>`;
+    }).join("") + `<td><button class="btn ghost bh_del" data-i="${i}"
+        style="padding:2px 8px;font-size:12px">删</button></td></tr>`;
+  });
+  $("bh_edit").innerHTML = h + "</tbody>";
+
+  $("bh_edit").querySelectorAll(".bh_in").forEach(el=>
+    el.addEventListener("input", e=>{
+      BENCH.editRows[+e.target.dataset.i][e.target.dataset.k] = e.target.value;
+    }));
+  $("bh_edit").querySelectorAll(".bh_del").forEach(el=>
+    el.addEventListener("click", e=>{
+      BENCH.editRows.splice(+e.target.dataset.i, 1); renderEdit();
+    }));
+}
+
+function benchFillDemo(){
+  // 只用于快速试跑流程：给空字段填一组占位数值
+  BENCH.editRows.forEach(r=>{
+    const p = parseFloat(r.planned_price) || 20;
+    if (r.cost_price === "" || r.cost_price == null) r.cost_price = (p * 0.28).toFixed(2);
+    if (r.packaging_cost === "" || r.packaging_cost == null) r.packaging_cost = "1.5";
+    if (r.weight_kg === "" || r.weight_kg == null) r.weight_kg = "0.5";
+    if (r.volume_l === "" || r.volume_l == null) r.volume_l = "2";
+    [["demand_score",18],["gap_score",12],["logistics_score",12],["content_score",6]]
+      .forEach(([k,v])=>{ if (r[k] === "" || r[k] == null) r[k] = String(v); });
+  });
+  renderEdit();
+  $("bh_save_status").innerHTML = "<strong>已填入示例数值 —— 这些不是真实报价</strong>，"
+    + "只为让你先把流程跑通。真做决策前必须换成供应商实际报价。";
+}
+
+async function benchSave(){
+  if (!BENCH.editRows.length){ $("bh_save_status").textContent = "没有候选品可保存。"; return; }
+  $("bh_save_status").textContent = "保存中…";
+  try{
+    const clean = BENCH.editRows.map(r=>{
+      const o = {};
+      EDIT_COLS.forEach(([k])=>{ o[k] = r[k]; });
+      return o;
+    });
+    const r = await api("/api/products/save", {rows: clean});
+    $("bh_save_status").innerHTML = `✓ 已保存 <strong>${r.saved}</strong> 个候选品到 <code>data/products.csv</code>`
+      + (r.backup ? `（旧文件已备份为 <code>${esc(r.backup)}</code>）` : "")
+      + (r.warning ? `<br><strong style="color:var(--warn)">⚠ ${esc(r.warning)}</strong>` : "");
+    await benchScore();
+    // 主数据也刷新，让定价计算器和选品评分页跟着更新
+    try{ const d = await api("/api/data"); D = d; renderScore(); initCalcPresets(); }catch(e){}
+  }catch(e){ $("bh_save_status").textContent = "保存失败：" + e.message; }
+}
+
+async function benchScore(){
+  if (!LOCAL) return;
+  try{
+    const rows = await api("/api/score", {platform:"tiktok_shop", market:"US", scenario:"standard"});
+    let h = `<thead><tr><th>SKU</th><th>名称</th><th class="num">总分</th>
+      <th class="num">利润分</th><th>是否淘汰</th><th>原因 / 备注</th></tr></thead><tbody>`;
+    rows.forEach(r=>{
+      h += `<tr class="${r.eliminated?"out":""}"><td>${esc(r.sku)}</td>
+        <td class="ttl">${esc(r.name)}</td>
+        <td class="num"><strong>${(r.total_score||0).toFixed(2)}</strong></td>
+        <td class="num">${(r.profit_score||0).toFixed(2)}</td>
+        <td>${r.eliminated?"是":"否"}</td>
+        <td class="why">${esc(r.eliminate_reason||"")}</td></tr>`;
+    });
+    $("bh_score").innerHTML = h + "</tbody>";
+  }catch(e){ $("bh_score").innerHTML = `<tbody><tr><td>评分失败：${esc(e.message)}</td></tr></tbody>`; }
+}
+
+function initCalcPresets(){
+  if (!D || !D.products) return;
+  $("preset").innerHTML = '<option value="">— 手动输入 —</option>' +
+    D.products.map((p,i)=>`<option value="${i}">${esc(p.sku)} ${esc(p.name)}</option>`).join("");
+}
+
+function initBench(){
+  $("bh_load").addEventListener("click", benchLoadSnap);
+  $("bh_add").addEventListener("click", benchAdd);
+  $("bh_save").addEventListener("click", benchSave);
+  $("bh_demo").addEventListener("click", benchFillDemo);
+  $("bh_reload").addEventListener("click", benchInitSnaps);
+  $("bh_mkt").addEventListener("change", ()=>{
+    if (!LOCAL) return;
+    const cur = (LOCAL.health.market_currency||{})[$("bh_mkt").value];
+    const fx = (LOCAL.health.default_fx||{})[cur];
+    if (fx) $("bh_fx").value = fx;
+  });
+}
 
 /* ═══════════ 本地服务探测 ═══════════ */
 let LOCAL = null;   // null = 未连接；否则是 {base, health}
@@ -819,6 +1082,7 @@ function renderModeBanner(){
         浏览器同源策略不允许网页直接抓取电商平台页面 —— 这是浏览器安全底层设计，绕不过。
         在项目目录运行 <code>python serve.py --open</code>，用它打开的地址访问面板即可解锁。</div>`);
 
+  renderBenchMode();
   const dis = !on;
   ["sc_run","mo_run","wf_run"].forEach(id=>{ if($(id)) $(id).disabled = dis; });
   if ($("sc_run")) $("sc_run").disabled = !scrape;
@@ -1126,7 +1390,8 @@ fetch("data.local.json")
   selfCheck();
   $("sscen").addEventListener("change", renderScore);
   initOps();
-  probeLocal().then(l=>{ LOCAL = l; renderModeBanner(); loadSnapshots(); });
+  initBench();
+  probeLocal().then(l=>{ LOCAL = l; renderModeBanner(); loadSnapshots(); benchInitSnaps(); });
 }).catch(err=>{
   document.querySelector(".wrap").insertAdjacentHTML("afterbegin",
     '<div class="cap"><strong>读不到 data.json。</strong>请先运行 '

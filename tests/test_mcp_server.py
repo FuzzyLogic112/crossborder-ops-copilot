@@ -33,19 +33,19 @@ async def test_all_six_tools_are_registered():
 
 
 @pytest.mark.anyio
-async def test_call_tool_calculate_unit_profit_via_protocol_layer():
+async def test_call_tool_calculate_unit_profit_via_protocol_layer(any_sku):
     from mcp_server.server import mcp
-    result = await mcp.call_tool("calculate_unit_profit", {"sku": "TRAVEL-003", "scenario": "standard"})
+    result = await mcp.call_tool("calculate_unit_profit", {"sku": any_sku, "scenario": "standard"})
     assert result.is_error is False
     payload = json.loads(result.content[0].text)
-    assert payload["sku"] == "TRAVEL-003"
+    assert payload["sku"] == any_sku
     assert payload["contribution_margin"] == pytest.approx(0.30, abs=0.01)
 
 
 @pytest.mark.anyio
-async def test_call_tool_create_price_change_never_marks_executed():
+async def test_call_tool_create_price_change_never_marks_executed(any_sku):
     from mcp_server.server import mcp
-    result = await mcp.call_tool("create_price_change", {"sku": "TRAVEL-001", "new_price": 90.0})
+    result = await mcp.call_tool("create_price_change", {"sku": any_sku, "new_price": 90.0})
     payload = json.loads(result.content[0].text)
     assert payload["status"] == "suggestion_only"
     assert "禁止自动执行" in payload["approval"]

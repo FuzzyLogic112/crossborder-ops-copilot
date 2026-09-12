@@ -31,3 +31,5 @@ data/inbox/*.xls
 
 # 面板：含真实抓取数据的本地版，不进公开仓库
 docs/data.local.json
+
+data/products.backup-*.csv

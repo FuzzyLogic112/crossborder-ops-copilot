@@ -94,6 +94,10 @@ def api_health():
         "verified_categories": VERIFIED_CATEGORIES,
         "candidate_categories": CANDIDATE_CATEGORIES,
         "slug_hint": "类目 slug 各站不同。抓不到时去目标站榜单页，看地址栏 /gp/bestsellers/<这一段>/ 的真实值",
+        "market_currency": MARKET_CURRENCY,
+        "default_fx": DEFAULT_FX,
+        "currency_note": "成本模型以人民币计价；平台售价为当地货币。从快照导入候选品时按汇率换算。"
+                         "默认汇率是占位量级，不是实时汇率。",
         "snapshot_dates": query_snapshot_dates(str(DATA / "history.db")),
         "note": "改价 / 上架 / 投放 / 发消息：本服务不提供任何此类接口",
     }
@@ -351,11 +355,176 @@ def api_snapshots():
             "db_dates": query_snapshot_dates(str(DATA / "history.db"))}
 
 
+# ── 候选商品读写（把抓到的竞品转成可评分的候选品）──
+
+# ⚠️ 币种约定：成本模型全部以人民币计价（采购价来自 1688 等国内渠道，物流费率也是人民币报价）。
+# 但抓取到的平台售价是当地货币（美/欧/日元）。两者直接相减会得出完全错误的结论，
+# 所以从快照导入候选品时必须做汇率换算。
+MARKET_CURRENCY = {"US": "USD", "EU": "EUR", "SEA": "USD", "JP": "JPY",
+                   "UK": "GBP", "DE": "EUR"}
+# 默认汇率仅为占位量级，**不是实时汇率**，使用前必须自行核实当日汇率。
+DEFAULT_FX = {"USD": 7.1, "EUR": 7.7, "JPY": 0.048, "GBP": 9.0}
+
+PRODUCT_COLUMNS = ["sku", "name", "category", "cost_price", "packaging_cost",
+                   "weight_kg", "volume_l", "compliance_flag", "demand_score",
+                   "gap_score", "logistics_score", "content_score", "planned_price"]
+
+# 抓取拿不到、必须人工填的字段。UI 会据此标注。
+MANUAL_ONLY_FIELDS = ["cost_price", "packaging_cost", "weight_kg", "volume_l",
+                      "demand_score", "gap_score", "logistics_score", "content_score"]
+
+
+def api_products_get():
+    import csv as _csv
+    f = DATA / "products.csv"
+    rows = list(_csv.DictReader(f.open(encoding="utf-8-sig"))) if f.exists() else []
+    return {
+        "columns": PRODUCT_COLUMNS,
+        "manual_only": MANUAL_ONLY_FIELDS,
+        "manual_note": "采购价 / 包装 / 重量 / 体积抓不到——那是供应链数据，需要去 1688 等渠道问供应商报价。"
+                       "四项打分是运营自己的判断，系统不代填。",
+        "rows": rows,
+    }
+
+
+def api_products_save(body):
+    """整表覆盖写入 products.csv。前端负责编辑，这里只做校验与落盘。
+    写前自动备份，避免手滑覆盖掉已有数据。
+    """
+    import csv as _csv
+    rows = body.get("rows")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("rows 必须是非空数组")
+
+    cleaned, seen = [], set()
+    for i, r in enumerate(rows):
+        sku = str(r.get("sku", "")).strip()
+        if not sku:
+            raise ValueError("第 %d 行缺少 sku" % (i + 1))
+        if sku in seen:
+            raise ValueError("sku 重复：%s" % sku)
+        seen.add(sku)
+
+        flag = str(r.get("compliance_flag", "ok")).strip() or "ok"
+        if flag not in ("ok", "review_needed", "banned"):
+            raise ValueError("%s 的 compliance_flag 只能是 ok / review_needed / banned" % sku)
+
+        out = {"sku": sku,
+               "name": str(r.get("name", "")).strip() or sku,
+               "category": str(r.get("category", "")).strip() or "uncategorized",
+               "compliance_flag": flag}
+        # 数值字段：空值保持为空，不擅自填 0（0 和"未填"在业务上不是一回事）
+        for k in ("cost_price", "packaging_cost", "weight_kg", "volume_l",
+                  "demand_score", "gap_score", "logistics_score", "content_score",
+                  "planned_price"):
+            v = r.get(k)
+            if v in (None, "", "null"):
+                out[k] = ""
+                continue
+            try:
+                out[k] = float(v)
+            except (TypeError, ValueError):
+                raise ValueError("%s 的 %s 不是数字：%r" % (sku, k, v))
+        cleaned.append(out)
+
+    f = DATA / "products.csv"
+    backup = None
+    if f.exists():
+        backup = DATA / ("products.backup-%s.csv" % datetime.now().strftime("%Y%m%d-%H%M%S"))
+        backup.write_bytes(f.read_bytes())
+
+    with f.open("w", newline="", encoding="utf-8-sig") as fh:
+        w = _csv.DictWriter(fh, fieldnames=PRODUCT_COLUMNS)
+        w.writeheader()
+        w.writerows(cleaned)
+
+    incomplete = [r["sku"] for r in cleaned
+                  if r["cost_price"] == "" or r["planned_price"] == ""]
+    return {
+        "saved": len(cleaned),
+        "backup": backup.name if backup else None,
+        "incomplete": incomplete,
+        "warning": ("以下候选品缺采购价或计划售价，评分时会被判为无法测算："
+                    + "、".join(incomplete)) if incomplete else None,
+    }
+
+
+def api_candidates_from_snapshot(body):
+    """把某份竞品快照里勾选的行，转成待填的候选品骨架。
+    只搬抓得到的字段（名称、售价作为计划售价参考），抓不到的一律留空。
+    """
+    import csv as _csv
+    path = body.get("snapshot")
+    ids = body.get("item_ids") or []
+    if not path:
+        raise ValueError("需要 snapshot（快照 CSV 相对路径）")
+    p = (BASE / path).resolve()
+    if BASE not in p.parents or not p.exists():
+        raise ValueError("快照不存在或路径越界：%s" % path)
+
+    rows = {r["item_id"]: r for r in _csv.DictReader(p.open(encoding="utf-8-sig"))}
+    category = body.get("category", "").strip() or "uncategorized"
+
+    # 币种换算：快照里的售价是平台当地货币，成本模型是人民币，必须换算
+    market = str(body.get("market", "US")).upper()
+    currency = body.get("currency") or MARKET_CURRENCY.get(market, "USD")
+    try:
+        fx = float(body.get("fx_rate") or DEFAULT_FX.get(currency, 1.0))
+    except (TypeError, ValueError):
+        raise ValueError("fx_rate 不是数字：%r" % body.get("fx_rate"))
+    if fx <= 0:
+        raise ValueError("fx_rate 必须大于 0")
+
+    out = []
+    for iid in ids:
+        r = rows.get(iid)
+        if not r:
+            continue
+        try:
+            local_price = float(r.get("price"))
+        except (TypeError, ValueError):
+            local_price = None
+        # 对标竞品定价作为起点，但换算成人民币后才能和成本比较
+        planned = round(local_price * fx, 2) if local_price is not None else ""
+        out.append({
+            "sku": iid,
+            "name": (r.get("title") or "")[:60],
+            "category": category,
+            "compliance_flag": "ok",
+            "planned_price": planned,
+            "cost_price": "", "packaging_cost": "", "weight_kg": "", "volume_l": "",
+            "demand_score": "", "gap_score": "", "logistics_score": "", "content_score": "",
+            "_local_price": local_price, "_currency": currency, "_fx_rate": fx,
+            "_ref_rating": r.get("rating"), "_ref_reviews": r.get("review_count"),
+            "_ref_rank": r.get("rank"),
+        })
+    return {
+        "candidates": out,
+        "currency": currency, "fx_rate": fx,
+        "note": "planned_price = 竞品当地售价 × 汇率 %.4f，已换算为人民币"
+                "（成本模型以人民币计价，不换算会得出完全错误的结论）。"
+                "⚠️ 该汇率是占位值，不是实时汇率，请自行核实当日汇率。"
+                "采购价与重量必须你自己填——抓不到。" % fx,
+    }
+
+
+def api_snapshot_rows(body):
+    """读一份快照的全部行，供前端勾选。"""
+    import csv as _csv
+    path = body.get("snapshot")
+    p = (BASE / path).resolve() if path else None
+    if not p or BASE not in p.parents or not p.exists():
+        raise ValueError("快照不存在或路径越界：%s" % path)
+    rows = list(_csv.DictReader(p.open(encoding="utf-8-sig")))
+    return {"snapshot": path, "count": len(rows), "rows": rows}
+
+
 ROUTES_GET = {
     "/api/health": lambda q: api_health(),
     "/api/data": lambda q: api_data(),
     "/api/snapshots": lambda q: api_snapshots(),
     "/api/job": lambda q: api_job(q.get("id", [""])[0]),
+    "/api/products": lambda q: api_products_get(),
 }
 ROUTES_POST = {
     "/api/profit": api_profit,
@@ -364,6 +533,9 @@ ROUTES_POST = {
     "/api/listing-prompt": api_listing_prompt,
     "/api/scrape": api_scrape,
     "/api/workflow": api_workflow,
+    "/api/products/save": api_products_save,
+    "/api/candidates": api_candidates_from_snapshot,
+    "/api/snapshot-rows": api_snapshot_rows,
 }
 
 

@@ -37,8 +37,13 @@ def make_product(**overrides):
 
 
 def test_load_products_reads_all_rows(products):
-    assert len(products) == 10
-    assert products[0].sku == "TRAVEL-001"
+    # 不断言具体数量与 SKU 名 —— products.csv 是用户会替换的数据文件，
+    # 断言「有数据且字段解析正确」才是这个测试该守的东西。
+    assert len(products) >= 1
+    p = products[0]
+    assert p.sku and p.name
+    assert isinstance(p.cost_price, float)
+    assert p.compliance_flag in ("ok", "review_needed", "banned")
 
 
 def test_profit_calculation_matches_manual_formula(platform_cfg, logistics_cfg):
