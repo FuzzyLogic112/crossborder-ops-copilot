@@ -62,16 +62,103 @@ def enabled_sites():
             if (v or {}).get("enabled", True) is not False}
 
 
-# 实测抓取成功过的类目 slug。面板会标「已验证」；未列出不代表不能用，只是没验过。
-VERIFIED_CATEGORIES = {
-    "us": ["pet-supplies", "toys-and-games", "office-products"],
-}
-# 常见候选，面板作为下拉建议给出，标「未验证」
-CANDIDATE_CATEGORIES = [
-    "pet-supplies", "electronics", "kitchen", "beauty", "hpc", "sports",
-    "toys-and-games", "office-products", "automotive", "computers", "videogames",
-    "home-garden", "baby-products", "health-personal-care",
-]
+# 类目中文名 → slug 的对照、已验证清单、已知不可用清单，全部来自
+# data/category_aliases.yaml，不再硬编码 —— 用户可自由增删。
+#
+# ⚠️ 不能用机器翻译代替这张表。Amazon 的 slug 是固定标识符不是译名：
+#    家居厨房=kitchen、运动户外=sporting-goods、电脑=pc、工具家装=hi。
+def load_category_aliases():
+    f = DATA / "category_aliases.yaml"
+    if not f.exists():
+        return {}
+    return load_yaml(str(f)) or {}
+
+
+def verified_categories():
+    """{site: [slug,...]} —— 实测抓到过商品的 slug。"""
+    return {k: list(v or []) for k, v in
+            (load_category_aliases().get("verified") or {}).items()}
+
+
+def known_bad_categories():
+    """{site: [slug,...]} —— 实测确认抓不到商品的 slug，抓之前就能警告。"""
+    return {k: list(v or []) for k, v in
+            (load_category_aliases().get("known_bad") or {}).items()}
+
+
+def category_choices(site):
+    """给面板下拉用：该站可选的「中文名 → slug」清单，带验证状态。"""
+    cfg = load_category_aliases()
+    table = dict(cfg.get("default") or {})
+    table.update((cfg.get("sites") or {}).get(site) or {})
+    ok = set(verified_categories().get(site) or [])
+    bad = set(known_bad_categories().get(site) or [])
+    out = []
+    for zh, slug in table.items():
+        if not slug:
+            continue
+        out.append({"zh": zh, "slug": slug,
+                    "verified": slug in ok, "known_bad": slug in bad})
+    out.sort(key=lambda x: (not x["verified"], x["zh"]))
+    return out
+
+
+def resolve_category(raw, site):
+    """把用户输入解析成 slug。中文名、同义词、或直接写 slug 都接受。
+
+    返回 (slug, info)。info 里说明是怎么解析出来的、验证状态如何，
+    让界面能把「你填的中文 → 实际要抓的 slug」显式摊开给用户看，
+    而不是偷偷替换掉。
+    """
+    text = str(raw or "").strip()
+    if not text:
+        raise ValueError("类目不能为空")
+
+    cfg = load_category_aliases()
+    table = dict(cfg.get("default") or {})
+    table.update((cfg.get("sites") or {}).get(site) or {})
+    synonyms = cfg.get("synonyms") or {}
+
+    lowered = text.lower()
+    matched_by, zh = None, None
+
+    if SLUG_RE.match(lowered):
+        # 本来就是 slug，原样用 —— 不做任何替换
+        slug, matched_by = lowered, "slug"
+    else:
+        # 当作中文名处理：先查同义词归一到标准名，再查对照表
+        canonical = synonyms.get(text, text)
+        if canonical in table and table[canonical]:
+            slug, zh, matched_by = table[canonical], canonical, (
+                "synonym" if canonical != text else "alias")
+        else:
+            names = sorted(table)
+            raise ValueError(
+                "没有「%s」的类目对照。可以：\n"
+                "  ① 直接填 slug（小写字母/数字/连字符），比如 kitchen\n"
+                "  ② 在 data/category_aliases.yaml 里加一条「%s: 对应slug」\n"
+                "     slug 去目标站榜单页地址栏 /gp/bestsellers/<这一段>/ 看真实值\n"
+                "  已有的中文名：%s"
+                % (text, text, "、".join(names) if names else "（对照表是空的）"))
+
+    if not SLUG_RE.match(slug):
+        raise ValueError("对照表里「%s」对应的 slug 格式不合法：%s" % (zh or text, slug))
+
+    ok = set(verified_categories().get(site) or [])
+    bad = set(known_bad_categories().get(site) or [])
+    warning = None
+    if slug in bad:
+        warning = ("%s 站实测确认 %s 抓不到商品（页面能打开但没有榜单元素）。"
+                   "建议换一个，或去榜单页确认真实 slug。" % (site.upper(), slug))
+    elif slug not in ok:
+        warning = ("%s 站的 %s 没有实测验证过，第一次用请做好失败的准备。"
+                   % (site.upper(), slug))
+
+    return slug, {"input": text, "slug": slug, "zh": zh,
+                  "matched_by": matched_by, "verified": slug in ok,
+                  "known_bad": slug in bad, "warning": warning}
+
+
 MAX_PAGES = 3          # 单次最多 3 页，防止无节制抓取
 MIN_DELAY = 3.0        # 页面间隔下限（秒），不允许调更小
 
@@ -107,8 +194,9 @@ def api_health():
         "sites": enabled_sites(),
         "all_sites": load_sites(),
         "allowed_sites": sorted(enabled_sites().keys()),
-        "verified_categories": VERIFIED_CATEGORIES,
-        "candidate_categories": CANDIDATE_CATEGORIES,
+        "verified_categories": verified_categories(),
+        "known_bad_categories": known_bad_categories(),
+        "category_choices": {s: category_choices(s) for s in enabled_sites()},
         "slug_hint": "类目 slug 各站不同。抓不到时去目标站榜单页，看地址栏 /gp/bestsellers/<这一段>/ 的真实值",
         "market_currency": MARKET_CURRENCY,
         "default_fx": DEFAULT_FX,
@@ -299,7 +387,6 @@ def run_workflow(job_id, input_csv, date, prev_date):
 
 def api_scrape(body):
     site = str(body.get("site", "us")).lower()
-    category = str(body.get("category", "pet-supplies")).lower()
     pages = int(body.get("pages", 1))
     delay = float(body.get("delay", MIN_DELAY))
 
@@ -308,14 +395,27 @@ def api_scrape(body):
         raise ValueError("站点 %s 未启用。可用：%s。"
                          "要加新站点，编辑 data/sites.yaml（并确认抓取工具支持该站）"
                          % (site, ", ".join(sorted(sites))))
-    if not SLUG_RE.match(category):
-        raise ValueError("类目 slug 格式不合法（只允许小写字母、数字、连字符）：%s" % category)
+    # 中文名、同义词、或直接写 slug 都接受 —— 解析结果会原样回给前端展示，
+    # 不偷偷替换，用户始终知道实际抓的是哪个 slug。
+    category, cat_info = resolve_category(body.get("category", "pet-supplies"), site)
     pages = max(1, min(MAX_PAGES, pages))
     delay = max(MIN_DELAY, delay)     # 不允许低于 3 秒
 
     job_id = start_job(run_scrape, site, category, pages, delay)
     return {"job_id": job_id, "site": site, "category": category,
-            "pages": pages, "delay": delay}
+            "pages": pages, "delay": delay, "category_info": cat_info}
+
+
+def api_resolve_category(body):
+    """让前端在你还没点「开始抓取」时就能看到中文会解析成哪个 slug。"""
+    site = str(body.get("site", "us")).lower()
+    try:
+        _, info = resolve_category(body.get("category", ""), site)
+        return {"ok": True, **info}
+    except ValueError as e:
+        # 用 reason 而不是 error：「没有这个中文名」是正常结果，不是服务出错。
+        # 前端的 api() 包装器见到 error 字段会直接抛异常，消息就被吞掉了。
+        return {"ok": False, "reason": str(e)}
 
 
 def api_workflow(body):
@@ -690,6 +790,7 @@ CONFIG_FILES = {
     "platforms": ("platforms.yaml", "平台佣金与支付费率"),
     "logistics": ("logistics_rates.yaml", "各目的市场头程物流费率"),
     "sites": ("sites.yaml", "抓取站点"),
+    "categories": ("category_aliases.yaml", "类目中文名对照"),
 }
 
 
@@ -769,6 +870,7 @@ ROUTES_POST = {
     "/api/monitor": api_monitor,
     "/api/listing-prompt": api_listing_prompt,
     "/api/scrape": api_scrape,
+    "/api/resolve-category": api_resolve_category,
     "/api/workflow": api_workflow,
     "/api/products/save": api_products_save,
     "/api/candidates": api_candidates_from_snapshot,

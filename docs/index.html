@@ -438,9 +438,11 @@
       <div>
         <label for="sc_site">站点</label>
         <select id="sc_site"></select>
-        <label for="sc_cat">类目 slug</label>
-        <input id="sc_cat" list="catlist" value="pet-supplies">
+        <label for="sc_cat">类目（中文名或 slug 都行）</label>
+        <input id="sc_cat" list="catlist" value="宠物用品"
+               placeholder="例：家居厨房 / 玩具 / kitchen">
         <datalist id="catlist"></datalist>
+        <div id="sc_resolve" class="note" style="margin:6px 0 0"></div>
         <p class="note" id="sc_hint"></p>
         <div class="row2">
           <div><label for="sc_pages">页数（上限 3）</label>
@@ -1643,18 +1645,65 @@ function renderModeBanner(){
 
   if (on){
     const h = LOCAL.health;
-    // 默认选中有已验证类目的站点，而不是字母序第一个
+    // 默认选中已验证类目**最多**的站点。
+    // 不能用「字母序第一个有验证项的站」—— 那样 de（2 项）会盖过 us（20 项）。
     const ver0 = h.verified_categories || {};
-    const preferred = h.allowed_sites.find(s=>(ver0[s]||[]).length) || h.allowed_sites[0];
+    const nVer = s => (ver0[s]||[]).length;
+    const preferred = [...h.allowed_sites].sort((a,b)=>nVer(b)-nVer(a))[0] || h.allowed_sites[0];
     $("sc_site").innerHTML = h.allowed_sites.map(s=>
-      `<option value="${s}"${s===preferred?" selected":""}>${s}${(ver0[s]||[]).length?" ✓":""}</option>`).join("");
-    $("catlist").innerHTML = (h.candidate_categories||[]).map(c=>`<option value="${c}">`).join("");
-    const ver = ver0[$("sc_site").value] || [];
-    $("sc_hint").innerHTML = (ver.length ? `已验证可用：<strong>${ver.join("、")}</strong>。其余为候选，未逐个验证。<br>` : "")
-      + esc(h.slug_hint||"");
+      `<option value="${s}"${s===preferred?" selected":""}>`
+      + `${s}${nVer(s)?` ✓ ${nVer(s)} 个已验证类目`:" （无已验证类目）"}</option>`).join("");
+    renderCatList();
   } else {
     $("sc_site").innerHTML = "<option>us</option>";
     $("sc_hint").textContent = "连接本地服务后显示可用站点与类目。";
+  }
+}
+
+// 类目下拉按站点填中文名 —— slug 各站不同，所以换站点必须重填。
+function renderCatList(){
+  if (!LOCAL) return;
+  const site = $("sc_site").value;
+  const choices = (LOCAL.health.category_choices||{})[site] || [];
+  $("catlist").innerHTML = choices.map(c=>{
+    const tag = c.known_bad ? "该站抓不到" : (c.verified ? "已验证" : "未验证");
+    return `<option value="${esc(c.zh)}">${esc(c.slug)} · ${tag}</option>`;
+  }).join("");
+  const okN = choices.filter(c=>c.verified).length;
+  $("sc_hint").innerHTML =
+    `直接填<strong>中文名</strong>就行（如「家居厨房」），也可以填 slug。`
+    + `本站对照表 ${choices.length} 项，其中 <strong>${okN}</strong> 项实测可用。<br>`
+    + `要加类目：在「配置」页改 <code>category_aliases.yaml</code>。` + esc(LOCAL.health.slug_hint||"");
+  resolveCat();
+}
+
+// 边打字边显示「中文 → 实际要抓的 slug」，不偷偷替换。
+let CAT_TIMER = null;
+let CAT_SEQ = 0;          // 请求序号：打字快时旧响应可能后到，必须丢弃，否则显示错的 slug
+function resolveCatLater(){ clearTimeout(CAT_TIMER); CAT_TIMER = setTimeout(resolveCat, 250); }
+async function resolveCat(){
+  const box = $("sc_resolve");
+  const raw = $("sc_cat").value.trim();
+  if (!LOCAL || !raw){ box.innerHTML = ""; return; }
+  const seq = ++CAT_SEQ;
+  try{
+    const r = await api("/api/resolve-category", {site: $("sc_site").value, category: raw});
+    if (seq !== CAT_SEQ) return;         // 已有更新的请求发出，这个结果作废
+    if (!r.ok){
+      const lines = String(r.reason||"").split("\n");
+      box.innerHTML = `<span style="color:var(--warn)">✗ ${esc(lines[0])}</span>`
+        + (lines.length>1 ? `<br><span class="note">${esc(lines.slice(1).join(" ").trim())}</span>` : "");
+      return;
+    }
+    const arrow = r.zh ? `${esc(r.zh)} → <code>${esc(r.slug)}</code>` : `<code>${esc(r.slug)}</code>`;
+    const badge = r.known_bad ? `<span style="color:var(--warn)">✗ 该站实测抓不到</span>`
+                : r.verified ? `<span style="color:var(--ok,#2a7)">✓ 已验证</span>`
+                : `<span style="color:var(--warn)">未验证</span>`;
+    box.innerHTML = `实际抓取：${arrow} ${badge}`
+      + (r.warning ? `<br><span style="color:var(--warn)">⚠ ${esc(r.warning)}</span>` : "");
+  }catch(e){
+    if (seq === CAT_SEQ)
+      box.innerHTML = `<span style="color:var(--warn)">✗ ${esc(e.message||"解析失败")}</span>`;
   }
 }
 
@@ -1903,12 +1952,9 @@ function initOps(){
   });
   $("sc_run").addEventListener("click", runScrape);
   $("sc_refresh").addEventListener("click", loadSnapshots);
-  $("sc_site").addEventListener("change", ()=>{
-    if (!LOCAL) return;
-    const ver = (LOCAL.health.verified_categories||{})[$("sc_site").value] || [];
-    $("sc_hint").innerHTML = (ver.length ? `已验证可用：<strong>${ver.join("、")}</strong>。其余为候选，未逐个验证。<br>`
-      : "此站点尚无已验证类目，请去榜单页地址栏确认真实 slug。<br>") + esc(LOCAL.health.slug_hint||"");
-  });
+  $("sc_site").addEventListener("change", renderCatList);
+  $("sc_cat").addEventListener("input", resolveCatLater);
+  $("sc_cat").addEventListener("change", resolveCat);
   $("mo_run").addEventListener("click", runCompare);
   $("mo_save").addEventListener("click", saveCompare);
   $("wf_run").addEventListener("click", runWorkflow);

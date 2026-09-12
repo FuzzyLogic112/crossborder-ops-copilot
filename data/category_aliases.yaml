@@ -1,0 +1,143 @@
+# 类目中文名 → 榜单 slug 映射
+#
+# ⚠️ 这不是翻译表，是对照表。Amazon 的榜单 slug 是固定标识符，不是英文译名：
+#     家居厨房 = kitchen      （不是 home-kitchen）
+#     玩具     = toys-and-games（美国站；toys 是空的）
+#     运动户外 = sporting-goods（不是 sports，sports 是空的）
+#     电脑     = pc           （不是 computers，computers 是空的）
+#     工具家装 = hi           （Home Improvement 的缩写）
+#   所以不能靠机器翻译生成，只能一条条实测确认。
+#
+# 结构：
+#   default      所有站点默认用这套中文名 → slug
+#   sites.<站>   该站的覆盖项（各站 slug 不完全一致，实测过才写）
+#   synonyms     同义词 → default 里的标准中文名（方便少打字）
+#   verified     实测抓到过商品的 slug，界面会标 ✓（没验过的不许写进来）
+#   known_bad    实测确认「页面存在但抓不到商品」的 slug，抓之前就会警告
+#
+# 加一条：在 default 里写「中文名: slug」即可，面板下拉立刻出现，不用改代码。
+# 找 slug：打开目标站榜单页，看地址栏 /gp/bestsellers/<这一段>/ 的真实值。
+
+default:
+  玩具: toys-and-games
+  家居厨房: kitchen
+  宠物用品: pet-supplies
+  办公用品: office-products
+  电子产品: electronics
+  美容个护: beauty
+  医药保健: hpc
+  电子游戏: videogames
+  汽车用品: automotive
+  服饰: fashion
+  运动户外: sporting-goods
+  电脑: pc
+  母婴用品: baby-products
+  家居园艺: home-garden
+  食品杂货: grocery
+  图书: books
+  工具家装: hi
+  乐器: musical-instruments
+  大家电: appliances
+  工业科研: industrial
+
+# 同义词：左边是你可能顺手打的，右边必须是 default 里的标准名
+synonyms:
+  玩具游戏: 玩具
+  玩具与游戏: 玩具
+  家居: 家居厨房
+  厨房: 家居厨房
+  家居与厨房: 家居厨房
+  宠物: 宠物用品
+  宠物用品店: 宠物用品
+  办公: 办公用品
+  文具: 办公用品
+  电子: 电子产品
+  数码: 电子产品
+  美妆: 美容个护
+  个护: 美容个护
+  美容: 美容个护
+  健康: 医药保健
+  保健: 医药保健
+  游戏: 电子游戏
+  汽车: 汽车用品
+  车品: 汽车用品
+  服装: 服饰
+  衣服: 服饰
+  运动: 运动户外
+  户外: 运动户外
+  计算机: 电脑
+  电脑配件: 电脑
+  母婴: 母婴用品
+  婴儿: 母婴用品
+  园艺: 家居园艺
+  庭院: 家居园艺
+  食品: 食品杂货
+  生鲜: 食品杂货
+  书籍: 图书
+  工具: 工具家装
+  五金: 工具家装
+  家装: 工具家装
+  家电: 大家电
+  工业: 工业科研
+
+# 各站覆盖项。只写实测确认过的；没把握就别写，让它回退 default。
+sites:
+  us: {}
+  # 英国站已实测：kitchen / pet-supplies / electronics 可用，
+  # 但 toys、toys-and-games、office-products 都抓不到（见 known_bad）。
+  # 正确 slug 尚未确认，所以这里先不写覆盖 —— 用之前请自己去榜单页确认。
+  uk: {}
+  de: {}
+  jp: {}
+
+# 实测抓到过商品的 slug。界面据此标 ✓「已验证」。
+# 验证方法：打开 https://<域名>/gp/bestsellers/<slug>/ 看有没有商品卡片。
+verified:
+  us:
+    - toys-and-games
+    - kitchen
+    - pet-supplies
+    - office-products
+    - electronics
+    - beauty
+    - hpc
+    - videogames
+    - automotive
+    - fashion
+    - sporting-goods
+    - pc
+    - baby-products
+    - home-garden
+    - grocery
+    - books
+    - hi
+    - musical-instruments
+    - appliances
+    - industrial
+  uk:
+    - kitchen
+    - pet-supplies
+    - electronics
+  de:
+    - kitchen
+    - pet-supplies
+  jp: []
+
+# 实测确认抓不到商品的 slug（页面能打开，但没有榜单元素）。
+# 面板会在你点「开始抓取」之前就警告，省得白等一轮。
+known_bad:
+  us:
+    - toys            # 正确的是 toys-and-games
+    - sports          # 正确的是 sporting-goods
+    - computers       # 正确的是 pc
+    - baby            # 正确的是 baby-products
+    - tools           # 正确的是 hi
+    - lawngarden      # 正确的是 home-garden
+    - arts-crafts
+  uk:
+    - toys
+    - toys-and-games  # 美国站可用，英国站不行
+    - office-products # 美国站可用，英国站不行
+  de:
+    - kueche-haushalt-wohnen
+  jp: []
